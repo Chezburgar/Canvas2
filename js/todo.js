@@ -131,6 +131,11 @@ const Todo = (() => {
             <span class="todo-due ${dueCls}">${DateUtils.formatDate(a.due)}</span>
             ${a.points ? `<span class="todo-points">${a.points} pts</span>` : ''}
             <div class="todo-actions">
+              ${a.canvasId && !Store.isDemo() && !isGraded
+                ? `<button class="todo-action-open" onclick="Work.openAssignmentById('${a.id}')" title="${a.quizId ? 'Take quiz' : 'Submit'} in Canvas2">
+                     ${a.quizId ? 'Take' : 'Submit'}
+                   </button>`
+                : ''}
               ${a.canvasUrl && a.canvasUrl !== '#'
                 ? `<a class="todo-action-btn" href="${escHtml(a.canvasUrl)}" target="_blank" rel="noopener" title="Open in Canvas">
                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -165,7 +170,11 @@ const Todo = (() => {
     const assignments = Store.getAssignments();
     const a = assignments.find(x => x.id === id);
     if (!a) return;
-    // For real Canvas assignments, don't toggle — open in Canvas
+    // For real Canvas assignments, open the in-app submit/quiz view
+    if (a.canvasId && !Store.isDemo()) {
+      Work.openAssignmentById(a.id);
+      return;
+    }
     if (a.canvasUrl && a.canvasUrl !== '#') {
       window.open(a.canvasUrl, '_blank');
       return;

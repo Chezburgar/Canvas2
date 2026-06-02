@@ -33,6 +33,10 @@
 const ALLOWED_HOST_SUFFIXES = [
   '.instructure.com',
   '.canvaslms.com',
+  // Canvas file-upload storage targets (needed for submitting file uploads)
+  '.inscloudgate.net',       // inst-fs (modern Canvas file storage)
+  '.instructuremedia.com',
+  '.amazonaws.com',          // legacy S3-backed upload buckets
 ];
 
 // Restrict which sites may USE this proxy. '*' allows any origin.
@@ -52,7 +56,8 @@ function corsHeaders(origin) {
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     // Canvas paginates using the Link header — the browser must be
     // allowed to read it so the frontend can follow "next" pages.
-    'Access-Control-Expose-Headers': 'Link',
+    // Location is exposed for the file-upload confirmation step.
+    'Access-Control-Expose-Headers': 'Link, Location',
     'Access-Control-Max-Age': '86400',
   };
 }
@@ -89,25 +94,39 @@ export default {
       return json({ error: `Host not allowed: ${targetUrl.hostname}` }, 403, cors);
     }
 
-    // Forward to Canvas, passing through the student's token.
+    // Build forwarded headers. We pass the token straight through and
+    // preserve the incoming Content-Type so multipart file uploads keep
+    // their boundary intact.
+    const fwdHeaders = {
+      'Accept': request.headers.get('Accept') || 'application/json',
+    };
+    const auth = request.headers.get('Authorization');
+    if (auth) fwdHeaders['Authorization'] = auth;
+    const ct = request.headers.get('Content-Type');
+    if (ct) fwdHeaders['Content-Type'] = ct;
+
+    // Forward the raw bytes for any method that carries a body. Using
+    // arrayBuffer (not text) keeps binary file uploads byte-for-byte.
+    const hasBody = !['GET', 'HEAD'].includes(request.method);
+    const body = hasBody ? await request.arrayBuffer() : undefined;
+
     const canvasResp = await fetch(targetUrl.toString(), {
       method: request.method,
-      headers: {
-        'Authorization': request.headers.get('Authorization') || '',
-        'Accept': 'application/json',
-        'Content-Type': request.headers.get('Content-Type') || 'application/json',
-      },
-      body: ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text(),
+      headers: fwdHeaders,
+      body,
+      redirect: 'manual',   // let the frontend resolve upload confirmation redirects
     });
 
-    // Relay Canvas's response + pagination Link header, plus CORS.
+    // Relay Canvas's response + pagination Link header + upload Location, plus CORS.
     const respHeaders = new Headers(cors);
     respHeaders.set('Content-Type', canvasResp.headers.get('Content-Type') || 'application/json');
     const link = canvasResp.headers.get('Link');
     if (link) respHeaders.set('Link', link);
+    const loc = canvasResp.headers.get('Location');
+    if (loc) respHeaders.set('Location', loc);
 
-    const body = await canvasResp.text();
-    return new Response(body, { status: canvasResp.status, headers: respHeaders });
+    const respBody = await canvasResp.arrayBuffer();
+    return new Response(respBody, { status: canvasResp.status, headers: respHeaders });
   },
 };
 

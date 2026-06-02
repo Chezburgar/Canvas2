@@ -183,6 +183,136 @@ const CanvasAPI = (() => {
   }
 
   /* ════════════════════════════════════════════
+     WRITE ACTIONS — submit work back to Canvas
+  ═════════════════════════════════════════════ */
+
+  /* Generic JSON request (GET/POST/PUT) through the proxy.
+     Used for everything that changes state on Canvas. */
+  async function apiRequest(method, endpoint, body) {
+    const url = endpoint.startsWith('http') ? endpoint : `${_baseUrl}${endpoint}`;
+    let resp;
+    try {
+      resp = await fetch(wrap(url), {
+        method,
+        headers: headers(),
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+    } catch (e) {
+      throw new Error('NETWORK');
+    }
+    if (resp.status === 401 || resp.status === 403) throw new Error('INVALID_TOKEN');
+    if (resp.status === 204) return null;
+    let data = null;
+    try { data = await resp.json(); } catch {}
+    if (!resp.ok) {
+      const msg = data?.errors?.[0]?.message
+               || data?.message
+               || (Array.isArray(data?.errors) ? data.errors.map(e => e.message).join(', ') : '')
+               || `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  /* ── Assignment detail (full description + submission) ── */
+  async function getAssignmentDetail(courseId, assignmentId) {
+    return apiRequest('GET',
+      `/courses/${courseId}/assignments/${assignmentId}?include[]=submission&include[]=submission_history`);
+  }
+
+  /* ── Submit an assignment ──────────────────
+     payload = { submission_type, body?, url?, file_ids? }  */
+  async function submitAssignment(courseId, assignmentId, payload) {
+    return apiRequest('POST',
+      `/courses/${courseId}/assignments/${assignmentId}/submissions`,
+      { submission: payload });
+  }
+
+  /* ── File upload flow (3 steps) ────────────
+     1. tell Canvas about the file → get an upload target
+     2. POST the bytes to that target
+     3. return the new file's id for use in submission[file_ids][]  */
+  async function uploadSubmissionFile(courseId, assignmentId, file) {
+    // Step 1 — register the upload
+    const reg = await apiRequest('POST',
+      `/courses/${courseId}/assignments/${assignmentId}/submissions/self/files`,
+      { name: file.name, size: file.size, content_type: file.type || 'application/octet-stream' });
+
+    if (!reg || !reg.upload_url) throw new Error('Upload could not be started');
+
+    // Step 2 — send the bytes to the storage URL Canvas gave us
+    const form = new FormData();
+    Object.entries(reg.upload_params || {}).forEach(([k, v]) => form.append(k, v));
+    form.append('file', file);
+
+    let upResp;
+    try {
+      // No auth header / no JSON content-type here — the upload params carry auth.
+      upResp = await fetch(wrap(reg.upload_url), { method: 'POST', body: form });
+    } catch {
+      throw new Error('NETWORK');
+    }
+
+    // Step 3 — resolve the resulting file id
+    let fileJson = null;
+    try { fileJson = await upResp.clone().json(); } catch {}
+    if (fileJson && fileJson.id) return fileJson.id;
+
+    // Some backends return a redirect/Location to confirm the upload
+    const loc = upResp.headers.get('Location');
+    if (loc) {
+      const confirmed = await apiRequest('GET', loc);
+      if (confirmed && confirmed.id) return confirmed.id;
+    }
+    throw new Error('Upload finished but the file id was not returned');
+  }
+
+  /* ════════════════════════════════════════════
+     CLASSIC QUIZZES — take a quiz in-app
+  ═════════════════════════════════════════════ */
+  async function getQuiz(courseId, quizId) {
+    return apiRequest('GET', `/courses/${courseId}/quizzes/${quizId}`);
+  }
+
+  /* Start (or resume) an attempt → returns a quiz_submission */
+  async function startQuiz(courseId, quizId) {
+    // Resume an in-progress attempt if one exists
+    try {
+      const existing = await apiRequest('GET', `/courses/${courseId}/quizzes/${quizId}/submission`);
+      const qs = existing?.quiz_submissions?.[0];
+      if (qs && qs.workflow_state === 'untaken') return qs;
+    } catch { /* none yet */ }
+
+    const res = await apiRequest('POST', `/courses/${courseId}/quizzes/${quizId}/submissions`);
+    const qs  = res?.quiz_submissions?.[0];
+    if (!qs) throw new Error('Could not start the quiz');
+    return qs;
+  }
+
+  async function getQuizQuestions(quizSubmissionId) {
+    const res = await apiRequest('GET',
+      `/quiz_submissions/${quizSubmissionId}/questions`);
+    return res?.quiz_submission_questions || [];
+  }
+
+  /* Record answers. answers = [{ id, answer }] */
+  async function answerQuizQuestions(quizSubmissionId, attempt, validationToken, answers) {
+    return apiRequest('POST', `/quiz_submissions/${quizSubmissionId}/questions`, {
+      attempt,
+      validation_token: validationToken,
+      quiz_questions: answers,
+    });
+  }
+
+  /* Finish the attempt → returns the graded submission */
+  async function completeQuiz(courseId, quizId, quizSubmissionId, attempt, validationToken) {
+    const res = await apiRequest('POST',
+      `/courses/${courseId}/quizzes/${quizId}/submissions/${quizSubmissionId}/complete`,
+      { attempt, validation_token: validationToken });
+    return res?.quiz_submissions?.[0] || null;
+  }
+
+  /* ════════════════════════════════════════════
      DATA TRANSFORMATION — Canvas → Canvas2
   ═════════════════════════════════════════════ */
 
@@ -275,6 +405,9 @@ const CanvasAPI = (() => {
       missing:     sub ? !!sub.missing : false,
       canvasUrl:   `${_baseUrl.replace('/api/v1', '')}/courses/${courseId}/assignments/${a.id}`,
       locked:      !!a.locked_for_user,
+      // Needed for in-app submission / quiz taking
+      quizId:          a.quiz_id || null,
+      submissionTypes: a.submission_types || [],
     };
   }
 
@@ -355,6 +488,11 @@ const CanvasAPI = (() => {
   return {
     init, isConfigured, hasProxy,
     getUser, syncAll, syncModules, syncDiscussions,
+    // Write actions
+    getAssignmentDetail, submitAssignment, uploadSubmissionFile,
+    // Quizzes
+    getQuiz, startQuiz, getQuizQuestions, answerQuizQuestions, completeQuiz,
+    stripHtml,
     getDomain: () => _baseUrl.replace('/api/v1','').replace('https://',''),
   };
 })();

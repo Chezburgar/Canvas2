@@ -429,10 +429,15 @@ const App = (() => {
       : course.grade >= 80 ? '#1a73e8'
       : course.grade >= 70 ? '#f59e0b' : '#ea4335';
 
+    const openAttr = (a) => {
+      if (!Store.isDemo() && a.canvasId) return `onclick="App.closeModal();Work.openAssignmentById('${a.id}')" style="cursor:pointer"`;
+      if (a.canvasUrl && a.canvasUrl !== '#') return `onclick="window.open('${escHtml(a.canvasUrl)}','_blank')" style="cursor:pointer"`;
+      return '';
+    };
     const assignmentList = (list, label) => list.length === 0 ? '' : `
       <div class="modal-section-title">${label} (${list.length})</div>
       ${list.map(a => `
-        <div class="modal-assignment-item" ${a.canvasUrl && a.canvasUrl !== '#' ? `onclick="window.open('${escHtml(a.canvasUrl)}','_blank')" style="cursor:pointer"` : ''}>
+        <div class="modal-assignment-item" ${openAttr(a)}>
           <div style="width:8px;height:8px;border-radius:50%;background:${course.color};flex-shrink:0"></div>
           <span class="modal-assignment-name">${escHtml(a.name)}</span>
           ${statusBadgeHtml(a)}
@@ -501,12 +506,16 @@ const App = (() => {
     ExternalTool: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
   };
 
-  function renderModules(modules, _courseId) {
+  function renderModules(modules, courseId) {
     const container = document.getElementById('modules-container');
     if (!modules || modules.length === 0) {
       container.innerHTML = '<div class="agenda-empty">No modules found for this course.</div>';
       return;
     }
+
+    const course   = Store.getCourses().find(c => c.id === courseId);
+    const canvasId = course?.canvasId;
+    const actionable = { Assignment: true, Quiz: true };
 
     container.innerHTML = modules.map(mod => {
       const items = (mod.items || []).map(item => {
@@ -516,14 +525,28 @@ const App = (() => {
         const icon = MODULE_TYPE_ICONS[item.type] || MODULE_TYPE_ICONS['File'];
         const completed = item.completion_requirement?.completed;
         const url = item.html_url || item.url || '#';
+        const inApp = actionable[item.type] && canvasId && item.content_id && !Store.isDemo();
+        const badge = inApp
+          ? '<span class="module-item-action">Open</span>'
+          : `<span class="module-item-type">${item.type || ''}</span>`;
+        const checkSvg = completed
+          ? '<svg class="module-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
+          : '';
+
+        if (inApp) {
+          return `
+            <a class="module-item module-item-clickable ${completed ? 'module-item-done' : ''}"
+               onclick="Work.openModuleItem(${canvasId}, '${item.type}', ${item.content_id}, ${JSON.stringify(item.title).replace(/"/g, '&quot;')}, '${escHtml(url)}')">
+              <span class="module-item-icon">${icon}</span>
+              <span class="module-item-title">${escHtml(item.title)}</span>
+              ${badge}${checkSvg}
+            </a>`;
+        }
         return `
           <a class="module-item ${completed ? 'module-item-done' : ''}" href="${escHtml(url)}" target="_blank" rel="noopener">
             <span class="module-item-icon">${icon}</span>
             <span class="module-item-title">${escHtml(item.title)}</span>
-            <span class="module-item-type">${item.type || ''}</span>
-            ${completed
-              ? '<svg class="module-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
-              : ''}
+            ${badge}${checkSvg}
           </a>`;
       }).join('');
 

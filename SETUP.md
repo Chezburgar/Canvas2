@@ -31,7 +31,7 @@ Keep that URL handy — you'll paste it into Canvas2 in Part 3.
 
 ## Part 2 — Get your Canvas Access Token
 
-1. Open Canvas: **https://mcps.instructure.com**
+1. Open Canvas: **https://mcpsmd.instructure.com**
 2. Click your profile picture → **Account** → **Settings**.
 3. Scroll to **Approved Integrations**.
 4. Click **+ New Access Token**.
@@ -47,12 +47,29 @@ On the Canvas2 login screen, fill in:
 
 | Field          | What to enter                                            |
 | -------------- | -------------------------------------------------------- |
-| Canvas Domain  | `mcps.instructure.com` (already filled in)               |
+| Canvas Domain  | `mcpsmd.instructure.com` (already filled in)             |
 | Access Token   | the token you copied in Part 2                           |
 | Proxy URL      | your Worker URL from Part 1                              |
 
 Click **Connect to Canvas**. Canvas2 will sync your courses, assignments,
 grades, announcements, modules, and discussions.
+
+---
+
+## Doing your work in Canvas2
+
+Once connected you can complete work without leaving Canvas2:
+
+- **Submit assignments** — open any assignment (from the To-Do list, a course,
+  or a module) and submit a **text entry**, a **website URL**, or a **file
+  upload**. It posts straight to Canvas and your status updates instantly.
+- **Take quizzes** — open a classic Canvas quiz, answer the questions
+  (multiple choice, true/false, multiple answer, short answer, numerical,
+  essay, fill-in-the-blank, dropdowns) and submit. Auto-graded scores show
+  immediately.
+
+> "New Quizzes" (Canvas's newer LTI quiz engine) can't be taken through the
+> API — Canvas2 will detect those and give you an **Open in Canvas** button.
 
 ---
 
