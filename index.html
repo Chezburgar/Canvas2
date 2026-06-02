@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas2 — MCPS Student Portal</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a73e8'/><text y='70' x='50' text-anchor='middle' font-size='60' font-family='Arial' font-weight='bold' fill='white'>C2</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════ LOGIN VIEW ═══════════════════════════ -->
+<div id="view-login" class="view-login">
+  <div class="login-bg">
+    <div class="login-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+    </div>
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-badge">C2</div>
+        <div class="login-brand">
+          <h1>Canvas2</h1>
+          <span>MCPS Student Portal</span>
+        </div>
+      </div>
+      <p class="login-tagline">A smarter way to stay on top of your school life.</p>
+      <div class="login-divider"></div>
+      <div class="login-actions">
+        <div id="google-signin-container">
+          <div id="g_id_onload"
+            data-client_id="YOUR_GOOGLE_CLIENT_ID"
+            data-callback="handleGoogleCredential"
+            data-auto_prompt="false">
+          </div>
+          <div class="g_id_signin"
+            data-type="standard"
+            data-size="large"
+            data-theme="outline"
+            data-text="signin_with"
+            data-shape="rectangular"
+            data-logo_alignment="left"
+            data-width="280">
+          </div>
+        </div>
+        <div class="login-or"><span>or</span></div>
+        <button class="btn-demo" onclick="App.signInDemo()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Continue with Demo Mode
+        </button>
+      </div>
+      <p class="login-note">Sign in with your MCPS Google account (@mcpsmd.net)</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ APP SHELL ═══════════════════════════ -->
+<div id="app-shell" class="app-shell hidden">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="logo-badge-sm">C2</div>
+        <span class="sidebar-brand-name">Canvas2</span>
+      </div>
+      <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Close sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-view="dashboard">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" data-view="todo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>To-Do</span>
+        <span class="nav-badge hidden" id="todo-badge">0</span>
+      </a>
+      <a class="nav-item" data-view="agenda">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Agenda</span>
+      </a>
+      <a class="nav-item" data-view="courses">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <span>Courses</span>
+      </a>
+      <a class="nav-item nav-grades" href="https://chezburgar.github.io/Grade-melon-3/login" target="_blank" rel="noopener noreferrer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Grades</span>
+        <svg class="nav-external" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+      <a class="nav-item" data-view="settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="sidebar-user">
+        <img src="" alt="User" id="sidebar-avatar" class="sidebar-avatar">
+        <div class="sidebar-user-info">
+          <span class="sidebar-user-name" id="sidebar-user-name">Student</span>
+          <span class="sidebar-user-email" id="sidebar-user-email">mcps@school.edu</span>
+        </div>
+      </div>
+      <button class="btn-signout" onclick="App.signOut()">Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- SIDEBAR OVERLAY (mobile) -->
+  <div class="sidebar-overlay hidden" id="sidebar-overlay" onclick="App.closeSidebar()"></div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-wrapper">
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <button class="topbar-menu-btn" id="topbar-menu-btn" onclick="App.openSidebar()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-input" placeholder="Search assignments, courses…" oninput="App.onSearch(this.value)">
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-icon-btn" title="Themes" data-view="settings" onclick="App.navigate('settings')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
+        </button>
+        <div class="topbar-user" id="topbar-user">
+          <img src="" alt="User" id="topbar-avatar" class="topbar-avatar">
+          <span id="topbar-user-name">Student</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ───────────── DASHBOARD VIEW ───────────── -->
+    <div id="view-dashboard" class="content-view active">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title" id="dashboard-greeting">Good morning!</h2>
+          <p class="view-subtitle" id="dashboard-date">Loading…</p>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-blue">
+          <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+          <div><div class="stat-num" id="stat-pending">0</div><div class="stat-label">Pending Tasks</div></div>
+        </div>
+        <div class="stat-card stat-red">
+          <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div><div class="stat-num" id="stat-due-today">0</div><div class="stat-label">Due Today</div></div>
+        </div>
+        <div class="stat-card stat-green">
+          <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div><div class="stat-num" id="stat-completed">0</div><div class="stat-label">Completed</div></div>
+        </div>
+        <div class="stat-card stat-purple">
+          <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+          <div><div class="stat-num" id="stat-courses">0</div><div class="stat-label">Courses</div></div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3>Upcoming Assignments</h3>
+            <button class="card-link" data-view="todo" onclick="App.navigate('todo')">View all</button>
+          </div>
+          <div id="dash-upcoming"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>My Courses</h3>
+            <button class="card-link" data-view="courses" onclick="App.navigate('courses')">View all</button>
+          </div>
+          <div class="mini-courses-grid" id="dash-courses"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Today's Agenda</h3>
+            <button class="card-link" onclick="App.navigate('agenda')">Open planner</button>
+          </div>
+          <div id="dash-agenda"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Announcements</h3></div>
+          <div id="dash-announcements"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────────── TO-DO VIEW ───────────── -->
+    <div id="view-todo" class="content-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">To-Do List</h2>
+          <p class="view-subtitle">Prioritized by assignment weight and due date</p>
+        </div>
+        <button class="btn-primary" id="btn-add-task" onclick="Todo.showAddForm()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Assignment
+        </button>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="today">Due Today</button>
+        <button class="filter-btn" data-filter="week">This Week</button>
+        <button class="filter-btn" data-filter="overdue">Overdue</button>
+        <button class="filter-btn" data-filter="completed">Completed</button>
+      </div>
+
+      <!-- Add / Edit Form -->
+      <div class="card add-form hidden" id="add-form">
+        <h3 id="form-title">Add Assignment</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="f-name" placeholder="e.g. Chapter 5 Quiz">
+          </div>
+          <div class="form-group">
+            <label>Course *</label>
+            <select id="f-course"></select>
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="f-type">
+              <option value="homework">Homework</option>
+              <option value="quiz">Quiz</option>
+              <option value="test">Test</option>
+              <option value="exam">Exam</option>
+              <option value="project">Project</option>
+              <option value="essay">Essay</option>
+              <option value="lab">Lab</option>
+              <option value="discussion">Discussion</option>
+              <option value="reading">Reading</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Points</label>
+            <input type="number" id="f-points" placeholder="100" min="0" max="9999">
+          </div>
+          <div class="form-group">
+            <label>Due Date & Time *</label>
+            <input type="datetime-local" id="f-due">
+          </div>
+          <div class="form-group form-group-full">
+            <label>Notes</label>
+            <textarea id="f-notes" placeholder="Optional notes or instructions…"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="form-submit-btn" onclick="Todo.submitForm()">Add Assignment</button>
+          <button class="btn-secondary" onclick="Todo.hideAddForm()">Cancel</button>
+        </div>
+        <input type="hidden" id="f-edit-id">
+      </div>
+
+      <div id="todo-list"></div>
+    </div>
+
+    <!-- ───────────── AGENDA VIEW ───────────── -->
+    <div id="view-agenda" class="content-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">Agenda Book</h2>
+          <p class="view-subtitle">Your personal planner — take notes for any day</p>
+        </div>
+      </div>
+
+      <div class="week-nav-bar">
+        <button class="btn-icon-outline" id="prev-week-btn" onclick="Agenda.prevWeek()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="week-label" id="week-label">Week of …</span>
+        <button class="btn-icon-outline" id="next-week-btn" onclick="Agenda.nextWeek()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button class="btn-secondary btn-sm" onclick="Agenda.goToToday()">Today</button>
+      </div>
+
+      <div class="week-grid" id="week-grid"></div>
+
+      <div class="day-panel" id="day-panel">
+        <div class="day-panel-header">
+          <h3 id="day-panel-title">Select a day</h3>
+        </div>
+        <div class="day-panel-body">
+          <div class="day-tasks-section">
+            <h4>Assignments Due</h4>
+            <div id="day-tasks"></div>
+          </div>
+          <div class="day-notes-section">
+            <h4>Notes</h4>
+            <textarea class="day-notes-input" id="day-notes-input" placeholder="Write your notes, reminders, or tasks for this day…"></textarea>
+            <button class="btn-primary btn-sm" onclick="Agenda.saveNotes()">Save Notes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────────── COURSES VIEW ───────────── -->
+    <div id="view-courses" class="content-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">My Courses</h2>
+          <p class="view-subtitle">All your enrolled courses this semester</p>
+        </div>
+      </div>
+      <div class="courses-grid" id="courses-grid"></div>
+    </div>
+
+    <!-- ───────────── SETTINGS VIEW ───────────── -->
+    <div id="view-settings" class="content-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">Settings</h2>
+          <p class="view-subtitle">Customize your Canvas2 experience</p>
+        </div>
+      </div>
+
+      <div class="settings-sections">
+        <!-- Profile -->
+        <div class="card settings-card">
+          <div class="settings-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Profile
+          </div>
+          <div class="profile-row">
+            <img src="" alt="Profile" id="settings-avatar" class="settings-avatar">
+            <div>
+              <div class="settings-name" id="settings-name">Student Name</div>
+              <div class="settings-email" id="settings-email">student@mcpsmd.net</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Themes -->
+        <div class="card settings-card">
+          <div class="settings-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10c0 2.76-1.12 5.26-2.93 7.07"/></svg>
+            Theme — 100 Available
+          </div>
+          <p class="settings-desc">Click any theme to apply it instantly.</p>
+          <div id="theme-picker"></div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="card settings-card">
+          <div class="settings-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Notifications
+          </div>
+          <div class="toggle-list">
+            <label class="toggle-row">
+              <div>
+                <div class="toggle-label">Due Today Alerts</div>
+                <div class="toggle-desc">Highlight assignments due today</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="s-notif-today" checked><span class="toggle-track"></span></label>
+            </label>
+            <label class="toggle-row">
+              <div>
+                <div class="toggle-label">3-Day Deadline Warning</div>
+                <div class="toggle-desc">Flag assignments due within 3 days</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="s-notif-3day" checked><span class="toggle-track"></span></label>
+            </label>
+          </div>
+        </div>
+
+        <!-- Data -->
+        <div class="card settings-card">
+          <div class="settings-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            Data
+          </div>
+          <div class="settings-actions">
+            <button class="btn-secondary" onclick="App.exportData()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export Data
+            </button>
+            <button class="btn-danger" onclick="App.clearData()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Clear All Data
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-wrapper -->
+</div><!-- /app-shell -->
+
+<!-- ═══════════════════════ COURSE DETAIL MODAL ═══════════════════════ -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="App.closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="modal-title">Course</h3>
+      <button class="modal-close-btn" onclick="App.closeModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ TOAST ═══════════════════════ -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="js/themes.js"></script>
+<script src="js/data.js"></script>
+<script src="js/todo.js"></script>
+<script src="js/agenda.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
