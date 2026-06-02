@@ -1,29 +1,47 @@
 /* ════════════════════════════════════════════════
-   Canvas2 — Data Layer (mock + localStorage)
+   Canvas2 — Data Layer
+   localStorage persistence + demo data fallback
    ════════════════════════════════════════════════ */
 
-const COURSE_COLORS = [
-  '#1a73e8','#d93025','#1e8e3e','#e37400','#9334e6',
-  '#007b83','#c5221f','#137333','#b06000','#7627bb',
-  '#0d652d','#a50e0e','#1a6eae','#c77400','#5b4092',
+/* ── Demo mode mock data ──────────────────────── */
+const DEMO_COURSES = [
+  { id:'c1', canvasId:1, name:'Honors English 10',   code:'ENG10H', teacher:'Ms. Johnson',   room:'204', color:'#1a73e8', grade:88, gradeLetter:'B+', canvasUrl:'#' },
+  { id:'c2', canvasId:2, name:'AP US History',        code:'APUSH',  teacher:'Mr. Thompson', room:'118', color:'#d93025', grade:82, gradeLetter:'B',  canvasUrl:'#' },
+  { id:'c3', canvasId:3, name:'Honors Algebra 2',     code:'ALG2H',  teacher:'Ms. Patel',    room:'312', color:'#1e8e3e', grade:91, gradeLetter:'A-', canvasUrl:'#' },
+  { id:'c4', canvasId:4, name:'Honors Biology',       code:'BIOH',   teacher:'Dr. Williams', room:'215', color:'#e37400', grade:85, gradeLetter:'B',  canvasUrl:'#' },
+  { id:'c5', canvasId:5, name:'Spanish III',          code:'SPA3',   teacher:'Sra. Reyes',   room:'106', color:'#9334e6', grade:79, gradeLetter:'C+', canvasUrl:'#' },
+  { id:'c6', canvasId:6, name:'AP Computer Science',  code:'APCSP',  teacher:'Mr. Chen',     room:'410', color:'#007b83', grade:95, gradeLetter:'A',  canvasUrl:'#' },
+  { id:'c7', canvasId:7, name:'PE & Health',          code:'PHYS',   teacher:'Coach Davis',  room:'Gym', color:'#137333', grade:93, gradeLetter:'A',  canvasUrl:'#' },
+  { id:'c8', canvasId:8, name:'Art Studio',          code:'ART1',   teacher:'Ms. Martinez', room:'502', color:'#9334e6', grade:97, gradeLetter:'A+', canvasUrl:'#' },
 ];
 
-const DEFAULT_COURSES = [
-  { id:'c1', name:'Honors English 10',       code:'ENG10H', teacher:'Ms. Johnson',    room:'204', color:'#1a73e8', grade:88 },
-  { id:'c2', name:'AP US History',            code:'APUSH',  teacher:'Mr. Thompson',  room:'118', color:'#d93025', grade:82 },
-  { id:'c3', name:'Honors Algebra 2',         code:'ALG2H',  teacher:'Ms. Patel',     room:'312', color:'#1e8e3e', grade:91 },
-  { id:'c4', name:'Honors Biology',           code:'BIOH',   teacher:'Dr. Williams',  room:'215', color:'#e37400', grade:85 },
-  { id:'c5', name:'Spanish III',              code:'SPA3',   teacher:'Sra. Reyes',    room:'106', color:'#9334e6', grade:79 },
-  { id:'c6', name:'AP Computer Science',      code:'APCSP',  teacher:'Mr. Chen',      room:'410', color:'#007b83', grade:95 },
-  { id:'c7', name:'PE & Health',              code:'PHYS',   teacher:'Coach Davis',   room:'Gym', color:'#137333', grade:93 },
-  { id:'c8', name:'Art Studio',              code:'ART1',   teacher:'Ms. Martinez',  room:'502', color:'#9334e6', grade:97 },
-];
+function makeDemoAssignments() {
+  const f = (d, h=23, m=59) => { const x = new Date(); x.setDate(x.getDate()+d); x.setHours(h,m,0); return x.toISOString(); };
+  return [
+    { id:'a1',  canvasId:1,  courseId:'c1', name:'The Great Gatsby Essay',         type:'essay',    points:100, due:f(2),  notes:'Chapters 1-5 analysis, 5 pages MLA',      completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a2',  canvasId:2,  courseId:'c2', name:'Unit 7 Test — Civil War',        type:'test',     points:100, due:f(3),  notes:'Chapters 14-17, know key figures',        completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a3',  canvasId:3,  courseId:'c3', name:'Chapter 6 Homework',             type:'homework', points:20,  due:f(1),  notes:'Problems 1-30 odd',                       completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a4',  canvasId:4,  courseId:'c4', name:'Cell Division Lab Report',       type:'lab',      points:80,  due:f(4),  notes:'Mitosis and meiosis diagrams',            completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a5',  canvasId:5,  courseId:'c5', name:'Oral Presentation — Mi Familia', type:'project',  points:60,  due:f(5),  notes:'3 min, 30+ vocab words',                  completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a6',  canvasId:6,  courseId:'c6', name:'Python Loops Quiz',              type:'quiz',     points:25,  due:f(1),  notes:'for/while, range(), enumerate',           completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a7',  canvasId:7,  courseId:'c2', name:'DBQ Practice Essay',             type:'essay',    points:50,  due:f(6),  notes:'Reconstruction era documents',            completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a8',  canvasId:8,  courseId:'c3', name:'Midterm Exam',                   type:'exam',     points:200, due:f(10), notes:'Chapters 1-8 cumulative',                 completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a9',  canvasId:9,  courseId:'c1', name:'Vocabulary Quiz 12',             type:'quiz',     points:30,  due:f(0),  notes:'Words from chapters 6-8',                 completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a10', canvasId:10, courseId:'c4', name:'Evolution Reading',              type:'reading',  points:10,  due:f(0),  notes:'Chapter 22 pages 580-605',                completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a11', canvasId:11, courseId:'c6', name:'Final Project — App Prototype',  type:'project',  points:150, due:f(21), notes:'Full web app with 3+ features',           completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a12', canvasId:12, courseId:'c5', name:'Chapter 8 Workbook',            type:'homework', points:15,  due:f(2),  notes:'Exercises A-D',                           completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a13', canvasId:13, courseId:'c2', name:'Primary Source Analysis',        type:'essay',    points:40,  due:f(-1), notes:'Gettysburg Address close reading',        completed:true,  status:'graded',        score:38, grade:'95%', late:false, missing:false, canvasUrl:'#' },
+    { id:'a14', canvasId:14, courseId:'c3', name:'Chapter 5 Homework',            type:'homework', points:20,  due:f(-3), notes:'All methods: GCF, trinomial',             completed:true,  status:'graded',        score:19, grade:'95%', late:false, missing:false, canvasUrl:'#' },
+    { id:'a15', canvasId:15, courseId:'c8', name:'Portrait Sketch',              type:'project',  points:50,  due:f(8),  notes:'Value drawing, 12x18 paper',              completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a16', canvasId:16, courseId:'c2', name:'Chapter 16 Reading',            type:'reading',  points:10,  due:f(-5), notes:'',                                        completed:false, status:'missing',       score:null, grade:null, late:false, missing:true,  canvasUrl:'#' },
+  ];
+}
 
-const DEFAULT_ANNOUNCEMENTS = [
-  { id:'a1', courseId:'c2', courseName:'AP US History',       title:'Unit 7 Test moved to Friday',          date: offsetDate(-1) },
-  { id:'a2', courseId:'c3', courseName:'Honors Algebra 2',    title:'Extra credit problems posted on Drive', date: offsetDate(-2) },
-  { id:'a3', courseId:'c6', courseName:'AP Computer Science', title:'Project 3 rubric updated',              date: offsetDate(0) },
-  { id:'a4', courseId:'c1', courseName:'Honors English 10',   title:'Essay workshop tomorrow — bring draft', date: offsetDate(0) },
+const DEMO_ANNOUNCEMENTS = [
+  { id:'ann1', canvasId:1, courseId:'c2', courseName:'AP US History',       title:'Unit 7 Test moved to Friday',            date: offsetDate(-1), url:'#' },
+  { id:'ann2', canvasId:2, courseId:'c3', courseName:'Honors Algebra 2',    title:'Extra credit problems posted on Drive',   date: offsetDate(-2), url:'#' },
+  { id:'ann3', canvasId:3, courseId:'c6', courseName:'AP Computer Science',  title:'Project 3 rubric updated — check Canvas', date: offsetDate(0),  url:'#' },
+  { id:'ann4', canvasId:4, courseId:'c1', courseName:'Honors English 10',    title:'Essay workshop tomorrow — bring draft',   date: offsetDate(0),  url:'#' },
 ];
 
 function offsetDate(days) {
@@ -32,76 +50,66 @@ function offsetDate(days) {
   return d.toISOString();
 }
 
-function makeDefaultAssignments() {
-  const now = new Date();
-  const f = (d, h=23, m=59) => { const x = new Date(now); x.setDate(x.getDate() + d); x.setHours(h, m, 0); return x.toISOString(); };
-  return [
-    { id:'t1',  courseId:'c1', name:'The Great Gatsby Essay',        type:'essay',    points:100, due: f(2),   notes:'Chapters 1-5 analysis, 5 pages MLA', completed:false },
-    { id:'t2',  courseId:'c2', name:'Unit 7 Test — Civil War',       type:'test',     points:100, due: f(3),   notes:'Chapters 14-17, know key figures',   completed:false },
-    { id:'t3',  courseId:'c3', name:'Chapter 6 Homework',            type:'homework', points:20,  due: f(1),   notes:'Problems 1-30 odd',                  completed:false },
-    { id:'t4',  courseId:'c4', name:'Cell Division Lab Report',      type:'lab',      points:80,  due: f(4),   notes:'Mitosis and meiosis diagrams',       completed:false },
-    { id:'t5',  courseId:'c5', name:'Oral Presentation — Mi Familia',type:'project',  points:60,  due: f(5),   notes:'3 minutes, use at least 30 vocab words', completed:false },
-    { id:'t6',  courseId:'c6', name:'Python Loops Quiz',             type:'quiz',     points:25,  due: f(1),   notes:'for/while, range(), enumerate',      completed:false },
-    { id:'t7',  courseId:'c2', name:'DBQ Practice Essay',            type:'essay',    points:50,  due: f(6),   notes:'Reconstruction era documents',       completed:false },
-    { id:'t8',  courseId:'c3', name:'Midterm Exam',                  type:'exam',     points:200, due: f(10),  notes:'Chapters 1-8 cumulative',            completed:false },
-    { id:'t9',  courseId:'c1', name:'Vocabulary Quiz 12',            type:'quiz',     points:30,  due: f(0),   notes:'Words from chapters 6-8',            completed:false },
-    { id:'t10', courseId:'c4', name:'Evolution Reading',             type:'reading',  points:10,  due: f(0),   notes:'Chapter 22 pages 580-605',           completed:false },
-    { id:'t11', courseId:'c6', name:'Final Project — App Prototype', type:'project',  points:150, due: f(21),  notes:'Full web app with 3+ features',      completed:false },
-    { id:'t12', courseId:'c5', name:'Chapter 8 Workbook',           type:'homework', points:15,  due: f(2),   notes:'Exercises A-D',                      completed:false },
-    { id:'t13', courseId:'c2', name:'Primary Source Analysis',       type:'essay',    points:40,  due: f(-1),  notes:'Gettysburg Address close reading',   completed:false },
-    { id:'t14', courseId:'c3', name:'Factoring Practice Set',        type:'homework', points:15,  due: f(7),   notes:'All methods: GCF, trinomial, diff of squares', completed:false },
-    { id:'t15', courseId:'c8', name:'Portrait Sketch',              type:'project',  points:50,  due: f(8),   notes:'Value drawing, 12x18 paper',         completed:false },
-  ];
-}
-
-/* ── Storage helpers ──────────────────────────── */
+/* ── Storage ──────────────────────────────────── */
 const Store = {
-  _key(k) { return `canvas2-${k}`; },
+  _k: k => `canvas2-${k}`,
 
   get(key, fallback = null) {
     try {
-      const v = localStorage.getItem(this._key(key));
+      const v = localStorage.getItem(this._k(key));
       return v !== null ? JSON.parse(v) : fallback;
     } catch { return fallback; }
   },
 
   set(key, val) {
-    try { localStorage.setItem(this._key(key), JSON.stringify(val)); } catch {}
+    try { localStorage.setItem(this._k(key), JSON.stringify(val)); } catch {}
   },
 
-  /* Courses */
-  getCourses() { return this.get('courses', DEFAULT_COURSES); },
-  saveCourses(c) { this.set('courses', c); },
+  /* Auth / config */
+  getUser()       { return this.get('user', null); },
+  saveUser(u)     { this.set('user', u); },
+  getCanvasCfg()  { return this.get('canvas-cfg', null); },
+  saveCanvasCfg(c){ this.set('canvas-cfg', c); },
 
-  /* Assignments */
-  getAssignments() {
-    const saved = this.get('assignments', null);
-    if (saved !== null) return saved;
-    const defaults = makeDefaultAssignments();
-    this.set('assignments', defaults);
-    return defaults;
-  },
-  saveAssignments(a) { this.set('assignments', a); },
+  /* Canvas data */
+  getCourses()            { return this.get('courses', DEMO_COURSES); },
+  saveCourses(c)          { this.set('courses', c); },
+  getAssignments()        { return this.get('assignments', makeDemoAssignments()); },
+  saveAssignments(a)      { this.set('assignments', a); },
+  getAnnouncements()      { return this.get('announcements', DEMO_ANNOUNCEMENTS); },
+  saveAnnouncements(a)    { this.set('announcements', a); },
 
-  /* Agenda notes: { 'YYYY-MM-DD': 'note text' } */
-  getNotes() { return this.get('notes', {}); },
-  saveNote(dateStr, text) {
+  /* Modules cache */
+  getModules(courseId)    { return this.get(`modules-${courseId}`, null); },
+  saveModules(courseId,m) { this.set(`modules-${courseId}`, m); },
+
+  /* Discussions cache */
+  getDiscussions(courseId)   { return this.get(`disc-${courseId}`, null); },
+  saveDiscussions(courseId,d){ this.set(`disc-${courseId}`, d); },
+
+  /* Agenda notes */
+  getNotes()               { return this.get('notes', {}); },
+  saveNote(dateStr, text)  {
     const notes = this.getNotes();
     notes[dateStr] = text;
     this.set('notes', notes);
   },
 
-  /* User */
-  getUser() { return this.get('user', null); },
-  saveUser(u) { this.set('user', u); },
+  /* Sync metadata */
+  getLastSync()   { return this.get('last-sync', null); },
+  saveLastSync()  { this.set('last-sync', new Date().toISOString()); },
 
-  /* Announcements */
-  getAnnouncements() { return this.get('announcements', DEFAULT_ANNOUNCEMENTS); },
+  isDemo() { return this.get('is-demo', false); },
+  setDemo(v){ this.set('is-demo', v); },
 
   clear() {
-    ['courses','assignments','notes','user','announcements'].forEach(k =>
-      localStorage.removeItem(this._key(k))
-    );
+    const keys = ['user','canvas-cfg','courses','assignments','announcements',
+                  'notes','last-sync','is-demo'];
+    keys.forEach(k => localStorage.removeItem(this._k(k)));
+    // clear module/discussion caches
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('canvas2-modules-') || k.startsWith('canvas2-disc-'))
+      .forEach(k => localStorage.removeItem(k));
   },
 };
 
@@ -115,29 +123,28 @@ const DateUtils = {
 
   toDateStr(d) {
     const dt = d instanceof Date ? d : new Date(d);
-    return dt.toISOString().split('T')[0];
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
   },
 
   formatDate(dateStr) {
-    const d = new Date(dateStr);
-    const today = this.today();
-    const diff = Math.ceil((d - today) / 86400000);
-    if (diff < 0) return `${Math.abs(diff)}d overdue`;
-    if (diff === 0) return 'Due today';
-    if (diff === 1) return 'Due tomorrow';
-    if (diff <= 7) return `Due in ${diff}d`;
-    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
-  },
-
-  formatFull(dateStr) {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      weekday:'long', month:'long', day:'numeric', year:'numeric'
-    });
+    const days = this.daysUntil(dateStr);
+    if (days < -1)  return `${Math.abs(days)}d overdue`;
+    if (days === -1) return 'Yesterday';
+    if (days === 0)  return 'Due today';
+    if (days === 1)  return 'Due tomorrow';
+    if (days <= 7)   return `Due in ${days}d`;
+    return new Date(dateStr).toLocaleDateString('en-US', { month:'short', day:'numeric' });
   },
 
   formatShort(dateStr) {
     return new Date(dateStr).toLocaleDateString('en-US', {
-      month:'short', day:'numeric', hour:'numeric', minute:'2-digit'
+      month:'short', day:'numeric', hour:'numeric', minute:'2-digit',
+    });
+  },
+
+  formatFull(dateStr) {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      weekday:'long', month:'long', day:'numeric', year:'numeric',
     });
   },
 
@@ -147,25 +154,23 @@ const DateUtils = {
     return Math.ceil((due - this.today()) / 86400000);
   },
 
-  isToday(dateStr) { return this.daysUntil(dateStr) === 0; },
-  isOverdue(dateStr) { return this.daysUntil(dateStr) < 0; },
-  isThisWeek(dateStr) {
-    const d = this.daysUntil(dateStr);
-    return d >= 0 && d <= 7;
-  },
+  isToday(dateStr)    { return this.daysUntil(dateStr) === 0; },
+  isOverdue(dateStr)  { return this.daysUntil(dateStr) < 0; },
+  isThisWeek(dateStr) { const d = this.daysUntil(dateStr); return d >= 0 && d <= 7; },
 };
 
-/* ── Export data as JSON download ─────────────── */
+/* ── Export ───────────────────────────────────── */
 function exportData() {
   const data = {
-    courses: Store.getCourses(),
-    assignments: Store.getAssignments(),
-    notes: Store.getNotes(),
+    courses:      Store.getCourses(),
+    assignments:  Store.getAssignments(),
+    notes:        Store.getNotes(),
+    exported_at:  new Date().toISOString(),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'canvas2-export.json';
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `canvas2-export-${DateUtils.toDateStr(new Date())}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

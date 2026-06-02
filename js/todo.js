@@ -4,14 +4,13 @@
 
 const Todo = (() => {
   let currentFilter = 'all';
-  let editingId = null;
+  let editingId     = null;
 
-  /* ── Priority scoring ─────────────────────────
-     Formula weights:
-       45% urgency   (due sooner → higher)
-       35% points    (more points → higher)
-       20% type      (exam/test > homework)
-     ─────────────────────────────────────────── */
+  /* ── Priority scoring ─────────────────────
+     Urgency  45% — sooner due = higher priority
+     Points   35% — more points = higher priority
+     Type     20% — exam > test > project > homework
+  ─────────────────────────────────────────── */
   const TYPE_WEIGHTS = {
     exam: 1.0, test: 0.9, project: 0.85, essay: 0.75,
     lab: 0.65, quiz: 0.6, discussion: 0.45,
@@ -21,7 +20,7 @@ const Todo = (() => {
   function priorityScore(a) {
     const days = DateUtils.daysUntil(a.due);
     let urgency;
-    if (days < 0)       urgency = 1.0;
+    if (days < 0)        urgency = 1.0;
     else if (days === 0) urgency = 0.97;
     else if (days <= 1)  urgency = 0.92;
     else if (days <= 3)  urgency = 0.78;
@@ -30,16 +29,16 @@ const Todo = (() => {
     else if (days <= 30) urgency = 0.18;
     else                 urgency = 0.05;
 
-    const pts = Math.min((a.points || 0) / 200, 1.0);
+    const pts  = Math.min((a.points || 0) / 200, 1.0);
     const type = TYPE_WEIGHTS[a.type] ?? 0.5;
     return urgency * 0.45 + pts * 0.35 + type * 0.20;
   }
 
   function priorityLabel(score) {
     if (score >= 0.75) return { label:'Critical', cls:'priority-critical' };
-    if (score >= 0.55) return { label:'High',     cls:'priority-high' };
-    if (score >= 0.35) return { label:'Medium',   cls:'priority-medium' };
-    return                    { label:'Low',       cls:'priority-low' };
+    if (score >= 0.55) return { label:'High',     cls:'priority-high'     };
+    if (score >= 0.35) return { label:'Medium',   cls:'priority-medium'   };
+    return                    { label:'Low',       cls:'priority-low'      };
   }
 
   function priorityColor(score) {
@@ -49,66 +48,72 @@ const Todo = (() => {
     return '#34a853';
   }
 
-  /* ── Filter logic ─────────────────────────── */
-  function filterAssignments(assignments, filter) {
+  /* ── Filter ───────────────────────────────── */
+  function filterAssignments(all, filter) {
     switch (filter) {
-      case 'today':     return assignments.filter(a => !a.completed && DateUtils.isToday(a.due));
-      case 'week':      return assignments.filter(a => !a.completed && DateUtils.isThisWeek(a.due) && !DateUtils.isOverdue(a.due));
-      case 'overdue':   return assignments.filter(a => !a.completed && DateUtils.isOverdue(a.due));
-      case 'completed': return assignments.filter(a => a.completed);
-      default:          return assignments.filter(a => !a.completed);
+      case 'today':     return all.filter(a => a.status !== 'graded' && DateUtils.isToday(a.due));
+      case 'week':      return all.filter(a => a.status !== 'graded' && DateUtils.isThisWeek(a.due) && !DateUtils.isOverdue(a.due));
+      case 'overdue':   return all.filter(a => a.status !== 'graded' && !a.missing && DateUtils.isOverdue(a.due));
+      case 'missing':   return all.filter(a => a.missing || a.status === 'missing');
+      case 'submitted': return all.filter(a => a.status === 'submitted' || a.status === 'late');
+      case 'graded':    return all.filter(a => a.status === 'graded');
+      default:          return all.filter(a => a.status !== 'graded' && !a.missing);
     }
   }
 
   /* ── Render ───────────────────────────────── */
   function render() {
-    const all = Store.getAssignments();
-    const courses = Store.getCourses();
+    const all       = Store.getAssignments();
+    const courses   = Store.getCourses();
     const courseMap = Object.fromEntries(courses.map(c => [c.id, c]));
 
     let list = filterAssignments(all, currentFilter);
 
-    // Sort: completed items by completion time; others by priority desc then due asc
-    if (currentFilter !== 'completed') {
+    if (currentFilter !== 'graded' && currentFilter !== 'submitted') {
       list.sort((a, b) => {
         const sa = priorityScore(a), sb = priorityScore(b);
-        if (Math.abs(sa - sb) > 0.01) return sb - sa;
-        return new Date(a.due) - new Date(b.due);
+        return Math.abs(sa - sb) > 0.01 ? sb - sa : new Date(a.due) - new Date(b.due);
       });
     } else {
-      list.sort((a, b) => new Date(b.completedAt||0) - new Date(a.completedAt||0));
+      list.sort((a, b) => new Date(b.due) - new Date(a.due));
     }
 
     const container = document.getElementById('todo-list');
     if (!container) return;
 
     if (list.length === 0) {
+      const emptyMessages = {
+        today:     'No assignments due today.',
+        week:      'Nothing due this week.',
+        missing:   'No missing assignments! Great job.',
+        overdue:   'No overdue assignments.',
+        submitted: 'No submitted assignments yet.',
+        graded:    'No graded assignments yet.',
+        all:       'No pending assignments. Add one or check other filters.',
+      };
       container.innerHTML = `
         <div class="todo-empty">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <polyline points="9 11 12 14 22 4"/>
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-          </svg>
-          <p>No assignments here!</p>
-          <small>${currentFilter === 'completed' ? 'Complete some tasks to see them here.' : 'Add an assignment or switch filters.'}</small>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <p>${emptyMessages[currentFilter] || 'Nothing here.'}</p>
         </div>`;
       return;
     }
 
     container.innerHTML = list.map(a => {
-      const course = courseMap[a.courseId] || { name:'Unknown', color:'#607d8b' };
-      const score  = priorityScore(a);
-      const pri    = priorityLabel(score);
-      const color  = priorityColor(score);
-      const days   = DateUtils.daysUntil(a.due);
-      const dueCls = days < 0 ? 'due-today' : days === 0 ? 'due-today' : days <= 3 ? 'due-soon' : 'due-later';
-      const overdueCls = days < 0 ? 'overdue' : days === 0 ? 'due-today-item' : '';
-      const dueText = DateUtils.formatDate(a.due);
+      const course  = courseMap[a.courseId] || { name:'Unknown', color:'#607d8b' };
+      const score   = priorityScore(a);
+      const pri     = priorityLabel(score);
+      const color   = priorityColor(score);
+      const days    = DateUtils.daysUntil(a.due);
+      const dueCls  = days < 0 ? 'due-today' : days === 0 ? 'due-today' : days <= 3 ? 'due-soon' : 'due-later';
+      const borderCls = a.missing ? 'missing-item' : days < 0 ? 'overdue' : days === 0 ? 'due-today-item' : '';
+      const isGraded = a.status === 'graded';
 
       return `
-        <div class="todo-item ${overdueCls} ${a.completed ? 'completed' : ''}" data-id="${a.id}">
+        <div class="todo-item ${borderCls} ${isGraded ? 'graded-item' : ''}" data-id="${a.id}">
           <div class="todo-priority-stripe" style="background:${color}"></div>
-          <div class="todo-check ${a.completed ? 'checked' : ''}" onclick="Todo.toggle('${a.id}')">
+          <div class="todo-check ${isGraded || a.status === 'submitted' ? 'checked' : ''}"
+               onclick="Todo.toggle('${a.id}')" title="${isGraded ? 'Graded' : 'Mark complete'}">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <div class="todo-content">
@@ -116,14 +121,21 @@ const Todo = (() => {
             <div class="todo-meta">
               <span class="todo-course-tag" style="background:${course.color}">${escHtml(course.name)}</span>
               <span class="todo-type-tag">${a.type}</span>
-              ${!a.completed ? `<span class="todo-priority-badge ${pri.cls}">${pri.label}</span>` : ''}
+              ${statusBadgeHtml(a)}
+              ${!isGraded && !a.missing ? `<span class="todo-priority-badge ${pri.cls}">${pri.label}</span>` : ''}
             </div>
             ${a.notes ? `<div class="todo-notes">${escHtml(a.notes)}</div>` : ''}
+            ${isGraded && a.score !== null ? `<div class="todo-score">Score: <strong>${a.score}/${a.points}</strong> · ${a.grade || ''}</div>` : ''}
           </div>
           <div class="todo-right">
-            <span class="todo-due ${dueCls}">${dueText}</span>
+            <span class="todo-due ${dueCls}">${DateUtils.formatDate(a.due)}</span>
             ${a.points ? `<span class="todo-points">${a.points} pts</span>` : ''}
             <div class="todo-actions">
+              ${a.canvasUrl && a.canvasUrl !== '#'
+                ? `<a class="todo-action-btn" href="${escHtml(a.canvasUrl)}" target="_blank" rel="noopener" title="Open in Canvas">
+                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                   </a>`
+                : ''}
               <button class="todo-action-btn" onclick="Todo.edit('${a.id}')" title="Edit">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
@@ -140,68 +152,67 @@ const Todo = (() => {
 
   /* ── Badge ────────────────────────────────── */
   function updateBadge() {
-    const all = Store.getAssignments();
-    const urgent = all.filter(a => !a.completed && DateUtils.daysUntil(a.due) <= 3).length;
-    const badge = document.getElementById('todo-badge');
+    const all    = Store.getAssignments();
+    const urgent = all.filter(a => a.status !== 'graded' && (DateUtils.daysUntil(a.due) <= 3 || a.missing)).length;
+    const badge  = document.getElementById('todo-badge');
     if (!badge) return;
-    if (urgent > 0) {
-      badge.textContent = urgent;
-      badge.classList.remove('hidden');
-    } else {
-      badge.classList.add('hidden');
-    }
+    if (urgent > 0) { badge.textContent = urgent > 99 ? '99+' : urgent; badge.classList.remove('hidden'); }
+    else            { badge.classList.add('hidden'); }
   }
 
-  /* ── Actions ──────────────────────────────── */
+  /* ── Toggle ───────────────────────────────── */
   function toggle(id) {
     const assignments = Store.getAssignments();
     const a = assignments.find(x => x.id === id);
     if (!a) return;
+    // For real Canvas assignments, don't toggle — open in Canvas
+    if (a.canvasUrl && a.canvasUrl !== '#') {
+      window.open(a.canvasUrl, '_blank');
+      return;
+    }
     a.completed = !a.completed;
-    a.completedAt = a.completed ? new Date().toISOString() : null;
+    a.status    = a.completed ? 'submitted' : 'not_submitted';
     Store.saveAssignments(assignments);
     render();
     App.refreshDashboard();
-    App.showToast(a.completed ? `Marked "${a.name}" complete!` : `Unmarked "${a.name}"`, 'success');
   }
 
+  /* ── Delete ───────────────────────────────── */
   function delete_(id) {
-    if (!confirm('Delete this assignment?')) return;
-    const assignments = Store.getAssignments().filter(x => x.id !== id);
-    Store.saveAssignments(assignments);
+    if (!confirm('Remove this assignment from Canvas2?')) return;
+    Store.saveAssignments(Store.getAssignments().filter(x => x.id !== id));
     render();
     App.refreshDashboard();
-    App.showToast('Assignment deleted.', 'warning');
+    App.showToast('Assignment removed.', 'warning');
   }
 
+  /* ── Edit ─────────────────────────────────── */
   function edit(id) {
     const a = Store.getAssignments().find(x => x.id === id);
     if (!a) return;
     editingId = id;
-
     populateCourseSelect();
-    document.getElementById('f-name').value  = a.name;
-    document.getElementById('f-course').value = a.courseId;
-    document.getElementById('f-type').value  = a.type;
-    document.getElementById('f-points').value = a.points || '';
-    document.getElementById('f-due').value   = a.due ? a.due.slice(0,16) : '';
-    document.getElementById('f-notes').value = a.notes || '';
-    document.getElementById('form-title').textContent = 'Edit Assignment';
-    document.getElementById('form-submit-btn').textContent = 'Save Changes';
-
+    document.getElementById('f-name').value    = a.name;
+    document.getElementById('f-course').value  = a.courseId;
+    document.getElementById('f-type').value    = a.type;
+    document.getElementById('f-points').value  = a.points || '';
+    document.getElementById('f-due').value     = a.due ? a.due.slice(0,16) : '';
+    document.getElementById('f-notes').value   = a.notes || '';
+    document.getElementById('form-title').textContent       = 'Edit Assignment';
+    document.getElementById('form-submit-btn').textContent  = 'Save Changes';
     showAddForm();
     document.getElementById('add-form').scrollIntoView({ behavior:'smooth' });
   }
 
+  /* ── Form ─────────────────────────────────── */
   function showAddForm() {
     document.getElementById('add-form').classList.remove('hidden');
     document.getElementById('btn-add-task').classList.add('hidden');
     populateCourseSelect();
     if (!editingId) {
-      document.getElementById('form-title').textContent = 'Add Assignment';
+      document.getElementById('form-title').textContent      = 'Add Assignment';
       document.getElementById('form-submit-btn').textContent = 'Add Assignment';
-      // Default due date: tomorrow 11:59pm
-      const d = new Date(); d.setDate(d.getDate()+1); d.setHours(23,59,0,0);
+      const d = new Date(); d.setDate(d.getDate()+1); d.setHours(23,59,0);
       document.getElementById('f-due').value = d.toISOString().slice(0,16);
     }
   }
@@ -209,44 +220,40 @@ const Todo = (() => {
   function hideAddForm() {
     document.getElementById('add-form').classList.add('hidden');
     document.getElementById('btn-add-task').classList.remove('hidden');
-    clearForm();
+    ['f-name','f-points','f-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-type').value = 'homework';
     editingId = null;
   }
 
-  function clearForm() {
-    ['f-name','f-points','f-notes'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('f-type').value = 'homework';
-  }
-
   function populateCourseSelect() {
-    const sel = document.getElementById('f-course');
+    const sel     = document.getElementById('f-course');
     const courses = Store.getCourses();
     sel.innerHTML = courses.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
   }
 
   function submitForm() {
-    const name    = document.getElementById('f-name').value.trim();
+    const name     = document.getElementById('f-name').value.trim();
     const courseId = document.getElementById('f-course').value;
-    const type    = document.getElementById('f-type').value;
-    const points  = parseInt(document.getElementById('f-points').value) || 0;
-    const due     = document.getElementById('f-due').value;
-    const notes   = document.getElementById('f-notes').value.trim();
+    const type     = document.getElementById('f-type').value;
+    const points   = parseInt(document.getElementById('f-points').value) || 0;
+    const due      = document.getElementById('f-due').value;
+    const notes    = document.getElementById('f-notes').value.trim();
 
     if (!name) { App.showToast('Please enter a name.', 'error'); return; }
     if (!due)  { App.showToast('Please set a due date.', 'error'); return; }
 
     const assignments = Store.getAssignments();
-
     if (editingId) {
       const a = assignments.find(x => x.id === editingId);
       if (a) { a.name = name; a.courseId = courseId; a.type = type; a.points = points; a.due = new Date(due).toISOString(); a.notes = notes; }
       App.showToast('Assignment updated!', 'success');
     } else {
       assignments.push({
-        id: 't' + Date.now(),
-        courseId, name, type, points,
-        due: new Date(due).toISOString(),
-        notes, completed: false,
+        id: 'u' + Date.now(), canvasId: null, courseId, name, type, points,
+        due: new Date(due).toISOString(), notes,
+        completed: false, status: 'not_submitted',
+        score: null, grade: null, late: false, missing: false,
+        canvasUrl: '#',
       });
       App.showToast(`"${name}" added!`, 'success');
     }
@@ -272,19 +279,8 @@ const Todo = (() => {
 
   return {
     init() { initFilters(); render(); },
-    render,
-    toggle,
+    render, toggle, edit, submitForm,
+    showAddForm, hideAddForm, updateBadge,
     delete: delete_,
-    edit,
-    showAddForm,
-    hideAddForm,
-    submitForm,
-    updateBadge,
   };
 })();
-
-function escHtml(str) {
-  const div = document.createElement('div');
-  div.appendChild(document.createTextNode(str || ''));
-  return div.innerHTML;
-}

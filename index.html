@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -29,33 +28,67 @@
           <span>MCPS Student Portal</span>
         </div>
       </div>
-      <p class="login-tagline">A smarter way to stay on top of your school life.</p>
+      <p class="login-tagline">A smarter Canvas — syncs your real data.</p>
+
       <div class="login-divider"></div>
-      <div class="login-actions">
-        <div id="google-signin-container">
-          <div id="g_id_onload"
-            data-client_id="PASTE_YOUR_CLIENT_ID_HERE"
-            data-callback="handleGoogleCredential"
-            data-auto_prompt="false">
-          </div>
-          <div class="g_id_signin"
-            data-type="standard"
-            data-size="large"
-            data-theme="outline"
-            data-text="signin_with"
-            data-shape="rectangular"
-            data-logo_alignment="left"
-            data-width="280">
+
+      <!-- Token instructions accordion -->
+      <details class="token-help">
+        <summary>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          How to get your Canvas Access Token
+        </summary>
+        <ol class="token-steps">
+          <li>Open <strong>Canvas</strong> (mcps.instructure.com)</li>
+          <li>Click your avatar → <strong>Account → Settings</strong></li>
+          <li>Scroll to <strong>"Approved Integrations"</strong></li>
+          <li>Click <strong>+ New Access Token</strong></li>
+          <li>Enter purpose: <em>"Canvas2"</em>, click Generate</li>
+          <li>Copy the token and paste it below</li>
+        </ol>
+      </details>
+
+      <div class="login-form">
+        <div class="login-field">
+          <label>Canvas Domain</label>
+          <input type="text" id="login-domain" value="mcps.instructure.com" placeholder="mcps.instructure.com" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="login-field">
+          <label>Access Token</label>
+          <div class="token-input-wrap">
+            <input type="password" id="login-token" placeholder="Paste your Canvas access token" autocomplete="off" spellcheck="false">
+            <button class="token-toggle-btn" type="button" onclick="toggleTokenVisibility()" title="Show/hide token">
+              <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
           </div>
         </div>
-        <div class="login-or"><span>or</span></div>
-        <button class="btn-demo" onclick="App.signInDemo()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Continue with Demo Mode
+        <div id="login-error" class="login-error hidden"></div>
+        <button class="btn-connect" id="btn-connect" onclick="App.connectCanvas()">
+          <span id="connect-label">Connect to Canvas</span>
+          <div class="connect-spinner hidden" id="connect-spinner"></div>
         </button>
       </div>
-      <p class="login-note">Sign in with your MCPS Google account (@mcpsmd.net)</p>
+
+      <div class="login-or"><span>or</span></div>
+      <button class="btn-demo" onclick="App.signInDemo()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Try Demo Mode
+      </button>
+      <p class="login-note">Your token is stored locally on this device only and never sent anywhere except Canvas.</p>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SYNC LOADING SCREEN ═══════════════════ -->
+<div id="sync-screen" class="sync-screen hidden">
+  <div class="sync-card">
+    <div class="logo-badge" style="margin:0 auto 20px">C2</div>
+    <h2>Syncing your Canvas data…</h2>
+    <div class="sync-progress-wrap">
+      <div class="sync-progress-bar"><div class="sync-progress-fill" id="sync-fill"></div></div>
+      <span class="sync-pct" id="sync-pct">0%</span>
+    </div>
+    <p class="sync-status-text" id="sync-status-text">Starting…</p>
   </div>
 </div>
 
@@ -69,7 +102,7 @@
         <div class="logo-badge-sm">C2</div>
         <span class="sidebar-brand-name">Canvas2</span>
       </div>
-      <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Close sidebar">
+      <button class="sidebar-close-btn" id="sidebar-close-btn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -91,6 +124,14 @@
       <a class="nav-item" data-view="courses">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
         <span>Courses</span>
+      </a>
+      <a class="nav-item" data-view="modules">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>
+        <span>Modules</span>
+      </a>
+      <a class="nav-item" data-view="discussions">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Discussions</span>
       </a>
       <a class="nav-item nav-grades" href="https://chezburgar.github.io/Grade-melon-3/login" target="_blank" rel="noopener noreferrer">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -115,7 +156,6 @@
     </div>
   </aside>
 
-  <!-- SIDEBAR OVERLAY (mobile) -->
   <div class="sidebar-overlay hidden" id="sidebar-overlay" onclick="App.closeSidebar()"></div>
 
   <!-- MAIN CONTENT -->
@@ -130,41 +170,51 @@
         <input type="text" id="search-input" placeholder="Search assignments, courses…" oninput="App.onSearch(this.value)">
       </div>
       <div class="topbar-right">
-        <button class="topbar-icon-btn" title="Themes" data-view="settings" onclick="App.navigate('settings')">
+        <div class="sync-info" id="sync-info">
+          <span class="sync-time" id="sync-time"></span>
+          <button class="topbar-icon-btn" id="sync-btn" onclick="App.syncNow()" title="Sync with Canvas">
+            <svg id="sync-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </div>
+        <button class="topbar-icon-btn" title="Themes" onclick="App.navigate('settings')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
         </button>
-        <div class="topbar-user" id="topbar-user">
+        <div class="topbar-user">
           <img src="" alt="User" id="topbar-avatar" class="topbar-avatar">
           <span id="topbar-user-name">Student</span>
         </div>
       </div>
     </header>
 
-    <!-- ───────────── DASHBOARD VIEW ───────────── -->
+    <!-- ───────────── DASHBOARD ───────────── -->
     <div id="view-dashboard" class="content-view active">
       <div class="view-header">
         <div>
           <h2 class="view-title" id="dashboard-greeting">Good morning!</h2>
-          <p class="view-subtitle" id="dashboard-date">Loading…</p>
+          <p class="view-subtitle" id="dashboard-date"></p>
+        </div>
+        <div class="missing-alert hidden" id="missing-alert">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span id="missing-alert-text">0 missing assignments</span>
         </div>
       </div>
 
       <div class="stats-grid">
         <div class="stat-card stat-blue">
-          <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-          <div><div class="stat-num" id="stat-pending">0</div><div class="stat-label">Pending Tasks</div></div>
+          <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div><div class="stat-num" id="stat-pending">0</div><div class="stat-label">Pending</div></div>
         </div>
         <div class="stat-card stat-red">
           <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           <div><div class="stat-num" id="stat-due-today">0</div><div class="stat-label">Due Today</div></div>
         </div>
+        <div class="stat-card stat-orange">
+          <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div>
+          <div><div class="stat-num" id="stat-missing">0</div><div class="stat-label">Missing</div></div>
+        </div>
         <div class="stat-card stat-green">
           <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <div><div class="stat-num" id="stat-completed">0</div><div class="stat-label">Completed</div></div>
-        </div>
-        <div class="stat-card stat-purple">
-          <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
-          <div><div class="stat-num" id="stat-courses">0</div><div class="stat-label">Courses</div></div>
+          <div><div class="stat-num" id="stat-submitted">0</div><div class="stat-label">Submitted</div></div>
         </div>
       </div>
 
@@ -172,7 +222,7 @@
         <div class="card">
           <div class="card-header">
             <h3>Upcoming Assignments</h3>
-            <button class="card-link" data-view="todo" onclick="App.navigate('todo')">View all</button>
+            <button class="card-link" onclick="App.navigate('todo')">View all</button>
           </div>
           <div id="dash-upcoming"></div>
         </div>
@@ -180,7 +230,7 @@
         <div class="card">
           <div class="card-header">
             <h3>My Courses</h3>
-            <button class="card-link" data-view="courses" onclick="App.navigate('courses')">View all</button>
+            <button class="card-link" onclick="App.navigate('courses')">View all</button>
           </div>
           <div class="mini-courses-grid" id="dash-courses"></div>
         </div>
@@ -194,18 +244,20 @@
         </div>
 
         <div class="card">
-          <div class="card-header"><h3>Announcements</h3></div>
+          <div class="card-header">
+            <h3>Announcements</h3>
+          </div>
           <div id="dash-announcements"></div>
         </div>
       </div>
     </div>
 
-    <!-- ───────────── TO-DO VIEW ───────────── -->
+    <!-- ───────────── TO-DO ───────────── -->
     <div id="view-todo" class="content-view">
       <div class="view-header">
         <div>
           <h2 class="view-title">To-Do List</h2>
-          <p class="view-subtitle">Prioritized by assignment weight and due date</p>
+          <p class="view-subtitle">Sorted by priority — weighted assignments and sooner deadlines first</p>
         </div>
         <button class="btn-primary" id="btn-add-task" onclick="Todo.showAddForm()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -217,11 +269,12 @@
         <button class="filter-btn active" data-filter="all">All</button>
         <button class="filter-btn" data-filter="today">Due Today</button>
         <button class="filter-btn" data-filter="week">This Week</button>
+        <button class="filter-btn" data-filter="missing">Missing</button>
         <button class="filter-btn" data-filter="overdue">Overdue</button>
-        <button class="filter-btn" data-filter="completed">Completed</button>
+        <button class="filter-btn" data-filter="submitted">Submitted</button>
+        <button class="filter-btn" data-filter="graded">Graded</button>
       </div>
 
-      <!-- Add / Edit Form -->
       <div class="card add-form hidden" id="add-form">
         <h3 id="form-title">Add Assignment</h3>
         <div class="form-grid">
@@ -257,7 +310,7 @@
           </div>
           <div class="form-group form-group-full">
             <label>Notes</label>
-            <textarea id="f-notes" placeholder="Optional notes or instructions…"></textarea>
+            <textarea id="f-notes" placeholder="Optional notes…"></textarea>
           </div>
         </div>
         <div class="form-actions">
@@ -270,7 +323,7 @@
       <div id="todo-list"></div>
     </div>
 
-    <!-- ───────────── AGENDA VIEW ───────────── -->
+    <!-- ───────────── AGENDA ───────────── -->
     <div id="view-agenda" class="content-view">
       <div class="view-header">
         <div>
@@ -280,11 +333,11 @@
       </div>
 
       <div class="week-nav-bar">
-        <button class="btn-icon-outline" id="prev-week-btn" onclick="Agenda.prevWeek()">
+        <button class="btn-icon-outline" onclick="Agenda.prevWeek()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <span class="week-label" id="week-label">Week of …</span>
-        <button class="btn-icon-outline" id="next-week-btn" onclick="Agenda.nextWeek()">
+        <button class="btn-icon-outline" onclick="Agenda.nextWeek()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
         <button class="btn-secondary btn-sm" onclick="Agenda.goToToday()">Today</button>
@@ -303,25 +356,53 @@
           </div>
           <div class="day-notes-section">
             <h4>Notes</h4>
-            <textarea class="day-notes-input" id="day-notes-input" placeholder="Write your notes, reminders, or tasks for this day…"></textarea>
+            <textarea class="day-notes-input" id="day-notes-input" placeholder="Write notes, reminders, or tasks for this day…"></textarea>
             <button class="btn-primary btn-sm" onclick="Agenda.saveNotes()">Save Notes</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ───────────── COURSES VIEW ───────────── -->
+    <!-- ───────────── COURSES ───────────── -->
     <div id="view-courses" class="content-view">
       <div class="view-header">
         <div>
           <h2 class="view-title">My Courses</h2>
-          <p class="view-subtitle">All your enrolled courses this semester</p>
+          <p class="view-subtitle">All enrolled courses this semester</p>
         </div>
       </div>
       <div class="courses-grid" id="courses-grid"></div>
     </div>
 
-    <!-- ───────────── SETTINGS VIEW ───────────── -->
+    <!-- ───────────── MODULES ───────────── -->
+    <div id="view-modules" class="content-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">Modules</h2>
+          <p class="view-subtitle">Course content, resources, and assignments organized by unit</p>
+        </div>
+        <select class="course-select" id="modules-course-select" onchange="App.loadModules(this.value)"></select>
+      </div>
+      <div id="modules-container">
+        <div class="agenda-empty">Select a course above to view its modules.</div>
+      </div>
+    </div>
+
+    <!-- ───────────── DISCUSSIONS ───────────── -->
+    <div id="view-discussions" class="content-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">Discussions</h2>
+          <p class="view-subtitle">Recent discussion topics across your courses</p>
+        </div>
+        <select class="course-select" id="disc-course-select" onchange="App.loadDiscussions(this.value)"></select>
+      </div>
+      <div id="discussions-container">
+        <div class="agenda-empty">Select a course above to view discussions.</div>
+      </div>
+    </div>
+
+    <!-- ───────────── SETTINGS ───────────── -->
     <div id="view-settings" class="content-view">
       <div class="view-header">
         <div>
@@ -331,7 +412,6 @@
       </div>
 
       <div class="settings-sections">
-        <!-- Profile -->
         <div class="card settings-card">
           <div class="settings-card-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -342,59 +422,43 @@
             <div>
               <div class="settings-name" id="settings-name">Student Name</div>
               <div class="settings-email" id="settings-email">student@mcpsmd.net</div>
+              <div class="settings-canvas-domain" id="settings-canvas-domain"></div>
             </div>
           </div>
         </div>
 
-        <!-- Themes -->
         <div class="card settings-card">
           <div class="settings-card-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10c0 2.76-1.12 5.26-2.93 7.07"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Canvas Sync
+          </div>
+          <p class="settings-desc" id="settings-last-sync">Last synced: never</p>
+          <div class="settings-actions">
+            <button class="btn-primary" onclick="App.syncNow()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Sync Now
+            </button>
+            <button class="btn-secondary" onclick="App.reconnect()">Change Account / Token</button>
+          </div>
+        </div>
+
+        <div class="card settings-card">
+          <div class="settings-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
             Theme — 100 Available
           </div>
-          <p class="settings-desc">Click any theme to apply it instantly.</p>
+          <p class="settings-desc">Click any theme to apply instantly.</p>
           <div id="theme-picker"></div>
         </div>
 
-        <!-- Notifications -->
-        <div class="card settings-card">
-          <div class="settings-card-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            Notifications
-          </div>
-          <div class="toggle-list">
-            <label class="toggle-row">
-              <div>
-                <div class="toggle-label">Due Today Alerts</div>
-                <div class="toggle-desc">Highlight assignments due today</div>
-              </div>
-              <label class="toggle-switch"><input type="checkbox" id="s-notif-today" checked><span class="toggle-track"></span></label>
-            </label>
-            <label class="toggle-row">
-              <div>
-                <div class="toggle-label">3-Day Deadline Warning</div>
-                <div class="toggle-desc">Flag assignments due within 3 days</div>
-              </div>
-              <label class="toggle-switch"><input type="checkbox" id="s-notif-3day" checked><span class="toggle-track"></span></label>
-            </label>
-          </div>
-        </div>
-
-        <!-- Data -->
         <div class="card settings-card">
           <div class="settings-card-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
             Data
           </div>
           <div class="settings-actions">
-            <button class="btn-secondary" onclick="App.exportData()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export Data
-            </button>
-            <button class="btn-danger" onclick="App.clearData()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-              Clear All Data
-            </button>
+            <button class="btn-secondary" onclick="App.exportData()">Export Data</button>
+            <button class="btn-danger" onclick="App.clearData()">Clear All Data</button>
           </div>
         </div>
       </div>
@@ -403,7 +467,7 @@
   </div><!-- /main-wrapper -->
 </div><!-- /app-shell -->
 
-<!-- ═══════════════════════ COURSE DETAIL MODAL ═══════════════════════ -->
+<!-- COURSE MODAL -->
 <div class="modal-overlay hidden" id="modal-overlay" onclick="App.closeModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-head">
@@ -416,11 +480,11 @@
   </div>
 </div>
 
-<!-- ═══════════════════════ TOAST ═══════════════════════ -->
 <div class="toast-container" id="toast-container"></div>
 
 <script src="js/themes.js"></script>
 <script src="js/data.js"></script>
+<script src="js/canvas-api.js"></script>
 <script src="js/todo.js"></script>
 <script src="js/agenda.js"></script>
 <script src="js/app.js"></script>
