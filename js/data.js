@@ -23,7 +23,7 @@ function makeDemoAssignments() {
     { id:'a3',  canvasId:3,  courseId:'c3', name:'Chapter 6 Homework',             type:'homework', points:20,  due:f(1),  notes:'Problems 1-30 odd',                       completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
     { id:'a4',  canvasId:4,  courseId:'c4', name:'Cell Division Lab Report',       type:'lab',      points:80,  due:f(4),  notes:'Mitosis and meiosis diagrams',            completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
     { id:'a5',  canvasId:5,  courseId:'c5', name:'Oral Presentation — Mi Familia', type:'project',  points:60,  due:f(5),  notes:'3 min, 30+ vocab words',                  completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
-    { id:'a6',  canvasId:6,  courseId:'c6', name:'Python Loops Quiz',              type:'quiz',     points:25,  due:f(1),  notes:'for/while, range(), enumerate',           completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
+    { id:'a6',  canvasId:6,  courseId:'c6', name:'Python Loops Quiz',              type:'quiz',     points:5,   due:f(1),  notes:'for/while, range(), enumerate — try the "Take" button!', completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#', demoQuiz:true, quizId:'demoquiz1' },
     { id:'a7',  canvasId:7,  courseId:'c2', name:'DBQ Practice Essay',             type:'essay',    points:50,  due:f(6),  notes:'Reconstruction era documents',            completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
     { id:'a8',  canvasId:8,  courseId:'c3', name:'Midterm Exam',                   type:'exam',     points:200, due:f(10), notes:'Chapters 1-8 cumulative',                 completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
     { id:'a9',  canvasId:9,  courseId:'c1', name:'Vocabulary Quiz 12',             type:'quiz',     points:30,  due:f(0),  notes:'Words from chapters 6-8',                 completed:false, status:'not_submitted', score:null, grade:null, late:false, missing:false, canvasUrl:'#' },
@@ -48,6 +48,81 @@ function offsetDate(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d.toISOString();
+}
+
+/* ── Demo quiz (used by Work module in demo mode) ──
+   Questions follow the same shape the Work module renders
+   for real Canvas quizzes. `correct` marks the right answer(s)
+   so demo submissions can be graded locally.                 */
+const DEMO_QUIZ = {
+  id: 'demoquiz1',
+  title: 'Python Loops Quiz',
+  points_possible: 5,
+  question_count: 5,
+  time_limit: null,
+  allowed_attempts: -1,
+  description: 'A short 5-question demo quiz so you can see how taking a quiz in Canvas2 works. Answer the questions and press Submit Quiz — it grades instantly.',
+  questions: [
+    {
+      id: 1, question_type: 'multiple_choice_question', points_possible: 1,
+      question_text: 'Which keyword begins a loop that repeats <em>while</em> a condition stays true?',
+      answers: [
+        { id: 11, text: 'while', correct: true },
+        { id: 12, text: 'for' },
+        { id: 13, text: 'if' },
+        { id: 14, text: 'def' },
+      ],
+    },
+    {
+      id: 2, question_type: 'true_false_question', points_possible: 1,
+      question_text: 'In Python, <code>range(5)</code> produces the numbers 0, 1, 2, 3, 4.',
+      answers: [
+        { id: 21, text: 'True', correct: true },
+        { id: 22, text: 'False' },
+      ],
+    },
+    {
+      id: 3, question_type: 'multiple_answers_question', points_possible: 1,
+      question_text: 'Which of these are real loop keywords in Python? (select all that apply)',
+      answers: [
+        { id: 31, text: 'for', correct: true },
+        { id: 32, text: 'while', correct: true },
+        { id: 33, text: 'repeat' },
+        { id: 34, text: 'loop' },
+      ],
+    },
+    {
+      id: 4, question_type: 'short_answer_question', points_possible: 1,
+      question_text: 'Which built-in function gives you both the index and the value while looping? (one word)',
+      answers: [
+        { id: 41, text: 'enumerate', correct: true },
+      ],
+    },
+    {
+      id: 5, question_type: 'essay_question', points_possible: 1,
+      question_text: 'In one sentence, describe a situation where a <strong>while</strong> loop is a better choice than a <strong>for</strong> loop.',
+      answers: [],
+    },
+  ],
+};
+
+/* Build modules for a course in demo mode out of its assignments,
+   so the course page's Modules section has real, clickable content. */
+function makeDemoModules(courseId) {
+  const items = Store.getAssignments().filter(a => a.courseId === courseId);
+  if (items.length === 0) return [];
+  const toItem = a => ({
+    id: a.id,
+    title: a.name,
+    type: a.demoQuiz ? 'Quiz' : a.type === 'discussion' ? 'Discussion' : 'Assignment',
+    localId: a.id,
+    completion_requirement: (a.completed || a.status === 'graded') ? { completed: true } : null,
+  });
+  const half = Math.ceil(items.length / 2);
+  return [
+    { id: `m-${courseId}-1`, name: 'Unit 1 — Getting Started', items: items.slice(0, half).map(toItem) },
+    { id: `m-${courseId}-2`, name: 'Unit 2 — In Progress',     items: items.slice(half).map(toItem) },
+  ].filter(m => m.items.length);
 }
 
 /* ── Storage ──────────────────────────────────── */

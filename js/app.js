@@ -339,7 +339,7 @@ const App = (() => {
     const el = document.getElementById('dash-courses');
     if (!el) return;
     el.innerHTML = courses.map(c => `
-      <div class="mini-course-card" style="background:${c.color}" onclick="App.openCourseModal('${c.id}')">
+      <div class="mini-course-card" style="background:${c.color}" onclick="App.openCourse('${c.id}')">
         <div class="mini-course-name">${escHtml(c.name)}</div>
         <div class="mini-course-teacher">${escHtml(c.teacher)}</div>
         ${c.grade !== null ? `<div class="mini-course-grade">${c.gradeLetter || c.grade + '%'}</div>` : ''}
@@ -388,7 +388,7 @@ const App = (() => {
         : `<div class="course-progress-label"><span>Grade</span><span style="color:var(--text-3)">Not available</span></div>`;
 
       return `
-        <div class="course-card" onclick="App.openCourseModal('${c.id}')">
+        <div class="course-card" onclick="App.openCourse('${c.id}')">
           <div class="course-card-banner" style="background:${c.color}">
             <div class="course-card-banner-text">
               <div class="course-code">${escHtml(c.code)}</div>
@@ -411,77 +411,125 @@ const App = (() => {
     }).join('');
   }
 
-  /* ── Course modal ─────────────────────────── */
-  function openCourseModal(courseId) {
+  /* ── Single course page ───────────────────── */
+  let currentCourseId = null;
+
+  function gradeColorFor(grade) {
+    return grade === null || grade === undefined ? '#607d8b'
+      : grade >= 90 ? '#1e8e3e'
+      : grade >= 80 ? '#1a73e8'
+      : grade >= 70 ? '#f59e0b' : '#ea4335';
+  }
+
+  function openCourse(courseId) {
     const course = Store.getCourses().find(c => c.id === courseId);
     if (!course) return;
+    currentCourseId = courseId;
 
     const assignments = Store.getAssignments()
       .filter(a => a.courseId === courseId)
       .sort((a, b) => new Date(a.due) - new Date(b.due));
 
-    const pending  = assignments.filter(a => a.status !== 'graded' && !a.missing);
-    const graded   = assignments.filter(a => a.status === 'graded');
-    const missing  = assignments.filter(a => a.missing || a.status === 'missing');
-
-    document.getElementById('modal-title').textContent = course.name;
-
-    const gradeColor = course.grade === null ? '#607d8b'
-      : course.grade >= 90 ? '#1e8e3e'
-      : course.grade >= 80 ? '#1a73e8'
-      : course.grade >= 70 ? '#f59e0b' : '#ea4335';
+    const pending = assignments.filter(a => a.status !== 'graded' && !a.missing);
+    const graded  = assignments.filter(a => a.status === 'graded');
+    const missing = assignments.filter(a => a.missing || a.status === 'missing');
+    const gradeColor = gradeColorFor(course.grade);
 
     const openAttr = (a) => {
-      if (!Store.isDemo() && a.canvasId) return `onclick="App.closeModal();Work.openAssignmentById('${a.id}')" style="cursor:pointer"`;
-      if (a.canvasUrl && a.canvasUrl !== '#') return `onclick="window.open('${escHtml(a.canvasUrl)}','_blank')" style="cursor:pointer"`;
+      if ((!Store.isDemo() && a.canvasId) || a.demoQuiz)
+        return `onclick="Work.openAssignmentById('${a.id}')" style="cursor:pointer"`;
+      if (a.canvasUrl && a.canvasUrl !== '#')
+        return `onclick="window.open('${escHtml(a.canvasUrl)}','_blank')" style="cursor:pointer"`;
       return '';
     };
     const assignmentList = (list, label) => list.length === 0 ? '' : `
-      <div class="modal-section-title">${label} (${list.length})</div>
+      <div class="course-sec-subtitle">${label} <span class="course-sec-count">${list.length}</span></div>
       ${list.map(a => `
-        <div class="modal-assignment-item" ${openAttr(a)}>
-          <div style="width:8px;height:8px;border-radius:50%;background:${course.color};flex-shrink:0"></div>
-          <span class="modal-assignment-name">${escHtml(a.name)}</span>
+        <div class="course-assign-item" ${openAttr(a)}>
+          <div class="course-assign-dot" style="background:${course.color}"></div>
+          <span class="course-assign-name">${escHtml(a.name)}</span>
+          <span class="course-assign-type">${escHtml(a.type)}</span>
           ${statusBadgeHtml(a)}
-          <span class="modal-assignment-due">${DateUtils.formatDate(a.due)}</span>
-          ${a.score !== null ? `<span class="modal-assignment-pts">${a.score}/${a.points}</span>`
-            : a.points ? `<span class="modal-assignment-pts">${a.points}pt</span>` : ''}
+          <span class="course-assign-due">${DateUtils.formatDate(a.due)}</span>
+          ${a.score !== null && a.score !== undefined ? `<span class="course-assign-pts">${a.score}/${a.points}</span>`
+            : a.points ? `<span class="course-assign-pts">${a.points}pt</span>` : ''}
         </div>`).join('')}`;
 
-    document.getElementById('modal-body').innerHTML = `
-      <div style="display:flex;gap:20px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
-        <div><div style="font-size:.75rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Teacher</div><div style="font-weight:500;margin-top:2px">${escHtml(course.teacher)}</div></div>
-        ${course.room ? `<div><div style="font-size:.75rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Room</div><div style="font-weight:500;margin-top:2px">${escHtml(course.room)}</div></div>` : ''}
-        ${course.grade !== null ? `<div><div style="font-size:.75rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Grade</div><div style="font-weight:800;font-size:1.2rem;color:${gradeColor};margin-top:2px">${course.gradeLetter || course.grade + '%'}</div></div>` : ''}
-        ${course.canvasUrl && course.canvasUrl !== '#'
-          ? `<a href="${escHtml(course.canvasUrl)}" target="_blank" class="btn-secondary btn-sm" style="margin-left:auto" onclick="event.stopPropagation()">Open in Canvas</a>`
-          : ''}
-      </div>
-      ${assignmentList(missing, '⚠ Missing')}
-      ${assignmentList(pending, 'Upcoming')}
-      ${assignmentList(graded, 'Recently Graded')}
-      ${assignments.length === 0 ? '<div style="color:var(--text-3);font-size:.85rem">No assignments found.</div>' : ''}`;
+    const page = document.getElementById('course-page');
+    page.innerHTML = `
+      <button class="course-back-btn" onclick="App.navigate('courses')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        All Courses
+      </button>
 
-    document.getElementById('modal-overlay').classList.remove('hidden');
+      <div class="course-hero" style="background:${course.color}">
+        <div class="course-hero-info">
+          <div class="course-hero-code">${escHtml(course.code || '')}</div>
+          <h2 class="course-hero-name">${escHtml(course.name)}</h2>
+          <div class="course-hero-teacher">${escHtml(course.teacher || 'Instructor')}${course.room ? ` · Room ${escHtml(course.room)}` : ''}</div>
+        </div>
+        <div class="course-hero-side">
+          ${course.grade !== null && course.grade !== undefined
+            ? `<div class="course-hero-grade">${course.gradeLetter || course.grade + '%'}</div><div class="course-hero-grade-label">Current Grade</div>`
+            : ''}
+          ${course.canvasUrl && course.canvasUrl !== '#'
+            ? `<a href="${escHtml(course.canvasUrl)}" target="_blank" rel="noopener" class="course-hero-link">Open in Canvas</a>`
+            : ''}
+        </div>
+      </div>
+
+      <div class="course-sections">
+        <section class="card course-section">
+          <div class="course-section-head">
+            <h3>Assignments</h3>
+            <span class="course-section-meta">${assignments.length} total · ${pending.length} to do</span>
+          </div>
+          <div class="course-section-body">
+            ${assignmentList(missing, '⚠ Missing')}
+            ${assignmentList(pending, 'Upcoming')}
+            ${assignmentList(graded, 'Graded')}
+            ${assignments.length === 0 ? '<div class="agenda-empty">No assignments found.</div>' : ''}
+          </div>
+        </section>
+
+        <section class="card course-section">
+          <div class="course-section-head">
+            <h3>Modules</h3>
+            <span class="course-section-meta">Course content by unit</span>
+          </div>
+          <div class="course-section-body">
+            <div id="course-modules"><div class="agenda-empty"><div class="loading-spinner"></div> Loading modules…</div></div>
+          </div>
+        </section>
+      </div>`;
+
+    navigate('course');
+    // keep the Courses item highlighted while on a course page
+    document.querySelectorAll('.nav-item[data-view]').forEach(item =>
+      item.classList.toggle('active', item.dataset.view === 'courses'));
+
+    loadModules(courseId, 'course-modules');
   }
 
+  /* Kept for any leftover callers — route to the full page */
+  function openCourseModal(courseId) { openCourse(courseId); }
   function closeModal() {
     document.getElementById('modal-overlay').classList.add('hidden');
   }
 
-  /* ── Modules view ─────────────────────────── */
-  async function loadModules(courseId) {
-    const container = document.getElementById('modules-container');
-    if (!courseId) return;
+  /* ── Modules ──────────────────────────────── */
+  async function loadModules(courseId, containerId = 'modules-container') {
+    const container = document.getElementById(containerId);
+    if (!courseId || !container) return;
+
+    if (Store.isDemo()) {
+      renderModules(makeDemoModules(courseId), courseId, containerId);
+      return;
+    }
 
     // Check cache first
     const cached = Store.getModules(courseId);
-    if (cached) { renderModules(cached, courseId); return; }
-
-    if (Store.isDemo()) {
-      container.innerHTML = '<div class="agenda-empty">Modules require a real Canvas connection.</div>';
-      return;
-    }
+    if (cached) { renderModules(cached, courseId, containerId); return; }
 
     container.innerHTML = '<div class="agenda-empty"><div class="loading-spinner"></div> Loading modules…</div>';
 
@@ -492,7 +540,7 @@ const App = (() => {
 
       const modules = await CanvasAPI.syncModules(canvasId);
       Store.saveModules(courseId, modules);
-      renderModules(modules, courseId);
+      renderModules(modules, courseId, containerId);
     } catch (err) {
       container.innerHTML = `<div class="agenda-empty">Failed to load modules: ${escHtml(err.message)}</div>`;
     }
@@ -508,8 +556,9 @@ const App = (() => {
     ExternalTool: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
   };
 
-  function renderModules(modules, courseId) {
-    const container = document.getElementById('modules-container');
+  function renderModules(modules, courseId, containerId = 'modules-container') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     if (!modules || modules.length === 0) {
       container.innerHTML = '<div class="agenda-empty">No modules found for this course.</div>';
       return;
@@ -527,18 +576,23 @@ const App = (() => {
         const icon = MODULE_TYPE_ICONS[item.type] || MODULE_TYPE_ICONS['File'];
         const completed = item.completion_requirement?.completed;
         const url = item.html_url || item.url || '#';
-        const inApp = actionable[item.type] && canvasId && item.content_id && !Store.isDemo();
+        // Demo modules carry a localId that maps to a local assignment/quiz
+        const demoClickable = !!item.localId;
+        const inApp = demoClickable || (actionable[item.type] && canvasId && item.content_id && !Store.isDemo());
         const badge = inApp
-          ? '<span class="module-item-action">Open</span>'
+          ? `<span class="module-item-action">${item.type === 'Quiz' ? 'Take' : 'Open'}</span>`
           : `<span class="module-item-type">${item.type || ''}</span>`;
         const checkSvg = completed
           ? '<svg class="module-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
           : '';
 
         if (inApp) {
+          const handler = demoClickable
+            ? `Work.openAssignmentById('${item.localId}')`
+            : `Work.openModuleItem(${canvasId}, '${item.type}', ${item.content_id}, ${JSON.stringify(item.title).replace(/"/g, '&quot;')}, '${escHtml(url)}')`;
           return `
             <a class="module-item module-item-clickable ${completed ? 'module-item-done' : ''}"
-               onclick="Work.openModuleItem(${canvasId}, '${item.type}', ${item.content_id}, ${JSON.stringify(item.title).replace(/"/g, '&quot;')}, '${escHtml(url)}')">
+               onclick="${handler}">
               <span class="module-item-icon">${icon}</span>
               <span class="module-item-title">${escHtml(item.title)}</span>
               ${badge}${checkSvg}
@@ -742,7 +796,7 @@ const App = (() => {
   return {
     init, connectCanvas, signInDemo, signOut, syncNow, reconnect,
     navigate, refreshDashboard,
-    openCourseModal, closeModal,
+    openCourse, openCourseModal, closeModal,
     loadModules, loadDiscussions,
     openSidebar, closeSidebar,
     onSearch, exportData: exportData_, clearData,

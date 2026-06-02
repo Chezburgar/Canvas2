@@ -131,7 +131,7 @@ const Todo = (() => {
             <span class="todo-due ${dueCls}">${DateUtils.formatDate(a.due)}</span>
             ${a.points ? `<span class="todo-points">${a.points} pts</span>` : ''}
             <div class="todo-actions">
-              ${a.canvasId && !Store.isDemo() && !isGraded
+              ${((a.canvasId && !Store.isDemo()) || a.demoQuiz) && !isGraded
                 ? `<button class="todo-action-open" onclick="Work.openAssignmentById('${a.id}')" title="${a.quizId ? 'Take quiz' : 'Submit'} in Canvas2">
                      ${a.quizId ? 'Take' : 'Submit'}
                    </button>`
@@ -170,6 +170,8 @@ const Todo = (() => {
     const assignments = Store.getAssignments();
     const a = assignments.find(x => x.id === id);
     if (!a) return;
+    // Demo quiz → open the interactive demo
+    if (a.demoQuiz) { Work.openAssignmentById(a.id); return; }
     // For real Canvas assignments, open the in-app submit/quiz view
     if (a.canvasId && !Store.isDemo()) {
       Work.openAssignmentById(a.id);

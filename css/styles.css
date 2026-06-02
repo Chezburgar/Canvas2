@@ -1504,9 +1504,88 @@ svg { flex-shrink: 0; }
 .todo-action-open:hover { filter: brightness(0.92); }
 
 /* ════════════════════════════════════════════════
+   SINGLE COURSE PAGE
+   ════════════════════════════════════════════════ */
+.course-back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.85rem; font-weight: 600; color: var(--text-2);
+  padding: 6px 12px 6px 8px; border-radius: 20px;
+  background: var(--surface-2); margin-bottom: 16px;
+  transition: var(--transition);
+}
+.course-back-btn:hover { color: var(--primary); background: var(--surface); box-shadow: var(--shadow-sm); }
+
+.course-hero {
+  border-radius: var(--radius-lg);
+  padding: 26px 28px;
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;
+  color: #fff; margin-bottom: 22px;
+  position: relative; overflow: hidden;
+}
+.course-hero::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent 60%);
+  pointer-events: none;
+}
+.course-hero-info { position: relative; z-index: 1; }
+.course-hero-code { font-size: 0.78rem; font-weight: 700; opacity: 0.85; letter-spacing: 0.5px; text-transform: uppercase; }
+.course-hero-name { font-size: 1.6rem; font-weight: 800; line-height: 1.15; margin: 4px 0 6px; }
+.course-hero-teacher { font-size: 0.9rem; opacity: 0.9; }
+.course-hero-side { position: relative; z-index: 1; text-align: right; flex-shrink: 0; }
+.course-hero-grade { font-size: 2rem; font-weight: 800; line-height: 1; }
+.course-hero-grade-label { font-size: 0.7rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+.course-hero-link {
+  display: inline-block; margin-top: 12px;
+  font-size: 0.8rem; font-weight: 600; color: #fff;
+  background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px;
+  transition: var(--transition);
+}
+.course-hero-link:hover { background: rgba(255,255,255,0.32); }
+
+.course-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .course-sections { grid-template-columns: 1fr; } }
+
+.course-section { padding: 0; overflow: hidden; }
+.course-section-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 16px 18px; border-bottom: 1px solid var(--border);
+}
+.course-section-head h3 { font-size: 1rem; font-weight: 700; color: var(--text-1); }
+.course-section-meta { font-size: 0.74rem; color: var(--text-3); font-weight: 500; }
+.course-section-body { padding: 14px 18px; max-height: 540px; overflow-y: auto; }
+
+.course-sec-subtitle {
+  font-size: 0.74rem; font-weight: 700; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.4px;
+  margin: 14px 0 8px; display: flex; align-items: center; gap: 8px;
+}
+.course-sec-subtitle:first-child { margin-top: 0; }
+.course-sec-count {
+  background: var(--surface-2); color: var(--text-3);
+  font-size: 0.7rem; padding: 1px 7px; border-radius: 10px; font-weight: 700;
+}
+
+.course-assign-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px; border-radius: var(--radius-sm);
+  background: var(--surface-2); margin-bottom: 6px;
+  font-size: 0.85rem; transition: var(--transition);
+}
+.course-assign-item[onclick]:hover { background: var(--surface); box-shadow: var(--shadow-sm); }
+.course-assign-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.course-assign-name { flex: 1; font-weight: 500; color: var(--text-1); }
+.course-assign-type { font-size: 0.7rem; color: var(--text-3); text-transform: capitalize; }
+.course-assign-due { font-size: 0.74rem; color: var(--text-3); white-space: nowrap; }
+.course-assign-pts { font-size: 0.74rem; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+
+/* Modules inside the course page shouldn't double up on card chrome */
+#course-modules .module-section { border: none; margin-bottom: 4px; }
+
+/* ════════════════════════════════════════════════
    WORK MODAL — submit assignments / take quizzes
    ════════════════════════════════════════════════ */
 .work-modal { width: 640px; }
+.work-meta-demo { background: var(--primary) !important; color: #fff !important; }
 
 .work-loading { padding: 30px 0; text-align: center; color: var(--text-3); font-size: 0.9rem; }
 

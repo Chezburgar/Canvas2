@@ -60,6 +60,7 @@ const Work = (() => {
   function openAssignmentById(localId) {
     const a = Store.getAssignments().find(x => x.id === localId);
     if (!a) return;
+    if (a.demoQuiz) { openDemoQuiz(a); return; }     // interactive demo quiz
     if (Store.isDemo() || !a.canvasId) { open(a.name); demoBlock(); return; }
     const cid = courseCanvasIdFromLocal(a);
     if (!cid) return;
@@ -67,7 +68,7 @@ const Work = (() => {
     else openAssignment(cid, a.canvasId, a.name);
   }
 
-  // From the Modules list (raw Canvas ids)
+  // From the Modules list (raw Canvas ids, or a demo localId)
   function openModuleItem(courseCanvasId, type, contentId, title, url) {
     if (Store.isDemo()) { open(title); demoBlock(); return; }
     if (type === 'Quiz')        return openQuiz(courseCanvasId, contentId, title);
@@ -283,6 +284,18 @@ const Work = (() => {
     }
   }
 
+  /* Interactive demo quiz — no Canvas calls, graded locally */
+  function openDemoQuiz(localAssignment) {
+    open(DEMO_QUIZ.title);
+    ctx = {
+      demo: true, quiz: DEMO_QUIZ, localId: localAssignment.id,
+      courseCanvasId: null, assignment: null,
+      submission: { id: 'demo', attempt: 1, validation_token: 'demo' },
+      questions: null,
+    };
+    renderQuizIntro();
+  }
+
   function quizUrl(courseCanvasId, quizId) {
     const dom = CanvasAPI.getDomain();
     return `https://${dom}/courses/${courseCanvasId}/quizzes/${quizId}`;
@@ -295,9 +308,15 @@ const Work = (() => {
     const attemptsLeft = q.allowed_attempts === -1 ? 'Unlimited'
       : `${Math.max(0, (q.allowed_attempts || 1))}`;
     const locked = q.locked_for_user;
+    const canvasLink = ctx.demo ? ''
+      : `<a class="btn-secondary" href="${escHtml(quizUrl(ctx.courseCanvasId, q.id))}" target="_blank" rel="noopener">Open in Canvas</a>`;
+    const note = ctx.demo
+      ? 'This is a sample quiz so you can see how taking a quiz works. Answer the questions and press <strong>Submit Quiz</strong> — it grades instantly.'
+      : 'Once you start, answer the questions below and press <strong>Submit Quiz</strong>. Your answers are sent to Canvas and graded automatically where possible.';
 
     setBody(`
       <div class="work-meta">
+        ${ctx.demo ? '<span class="work-meta-pill work-meta-demo">Demo</span>' : ''}
         <span class="work-meta-pill">${q.points_possible != null ? q.points_possible + ' pts' : 'Practice'}</span>
         <span class="work-meta-pill">${q.question_count || 0} questions</span>
         ${q.time_limit ? `<span class="work-meta-pill">${q.time_limit} min limit</span>` : ''}
@@ -307,11 +326,11 @@ const Work = (() => {
       ${q.description ? `<div class="work-desc">${sanitize(q.description)}</div>` : ''}
       ${locked
         ? `<div class="work-note">This quiz is currently locked.</div>
-           <div class="work-actions"><a class="btn-secondary" href="${escHtml(quizUrl(ctx.courseCanvasId, q.id))}" target="_blank" rel="noopener">Open in Canvas</a></div>`
-        : `<div class="work-note work-note-info">Once you start, answer the questions below and press <strong>Submit Quiz</strong>. Your answers are sent to Canvas and graded automatically where possible.</div>
+           <div class="work-actions">${canvasLink}</div>`
+        : `<div class="work-note work-note-info">${note}</div>
            <div class="work-actions">
              <button class="btn-primary" id="quiz-start-btn" onclick="Work.startQuiz()">Start Quiz</button>
-             <a class="btn-secondary" href="${escHtml(quizUrl(ctx.courseCanvasId, q.id))}" target="_blank" rel="noopener">Open in Canvas</a>
+             ${canvasLink}
            </div>`}`);
   }
 
@@ -321,10 +340,13 @@ const Work = (() => {
     busy = true;
     if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
     try {
-      const sub = await CanvasAPI.startQuiz(ctx.courseCanvasId, ctx.quiz.id);
-      ctx.submission = sub;
-      const questions = await CanvasAPI.getQuizQuestions(sub.id);
-      ctx.questions = questions;
+      if (ctx.demo) {
+        ctx.questions = ctx.quiz.questions;
+      } else {
+        const sub = await CanvasAPI.startQuiz(ctx.courseCanvasId, ctx.quiz.id);
+        ctx.submission = sub;
+        ctx.questions = await CanvasAPI.getQuizQuestions(sub.id);
+      }
       renderQuizQuestions();
     } catch (err) {
       App.showToast('Could not start quiz: ' + err.message, 'error');
@@ -338,7 +360,7 @@ const Work = (() => {
     const qs = ctx.questions || [];
     if (qs.length === 0) {
       setBody(`<div class="work-note">No answerable questions were returned for this quiz.</div>
-        <div class="work-actions"><a class="btn-secondary" href="${escHtml(quizUrl(ctx.courseCanvasId, ctx.quiz.id))}" target="_blank" rel="noopener">Open in Canvas</a></div>`);
+        ${ctx.demo ? '' : `<div class="work-actions"><a class="btn-secondary" href="${escHtml(quizUrl(ctx.courseCanvasId, ctx.quiz.id))}" target="_blank" rel="noopener">Open in Canvas</a></div>`}`);
       return;
     }
     const body = qs.map((q, idx) => `
@@ -469,7 +491,11 @@ const Work = (() => {
     const msg = document.getElementById('quiz-msg');
     const sub = ctx.submission;
 
-    if (!confirm('Submit your quiz to Canvas? You may not be able to change answers afterward.')) return;
+    if (!confirm(ctx.demo
+      ? 'Submit your demo quiz? It will be graded instantly.'
+      : 'Submit your quiz to Canvas? You may not be able to change answers afterward.')) return;
+
+    if (ctx.demo) { gradeDemoQuiz(); return; }
 
     busy = true;
     btn.disabled = true;
@@ -502,11 +528,54 @@ const Work = (() => {
     }
   }
 
-  function renderQuizResult(completed) {
+  /* Grade the demo quiz locally and show the result */
+  function gradeDemoQuiz() {
+    const answers = gatherAnswers();
+    const given = Object.fromEntries(answers.map(x => [x.id, x.answer]));
+    let score = 0, hasEssay = false;
+
+    ctx.quiz.questions.forEach(q => {
+      if (q.question_type === 'essay_question') { hasEssay = true; return; }
+      const a = given[q.id];
+      if (a === undefined) return;
+      if (q.question_type === 'multiple_answers_question') {
+        const correct = q.answers.filter(x => x.correct).map(x => x.id).sort((m, n) => m - n);
+        const sel = [...a].sort((m, n) => m - n);
+        if (correct.length === sel.length && correct.every((v, i) => v === sel[i])) score += q.points_possible;
+      } else if (q.question_type === 'short_answer_question') {
+        if (q.answers.some(x => x.correct && x.text.trim().toLowerCase() === String(a).trim().toLowerCase()))
+          score += q.points_possible;
+      } else { // multiple choice / true-false
+        const correct = q.answers.find(x => x.correct);
+        if (correct && a === correct.id) score += q.points_possible;
+      }
+    });
+
+    // reflect the result on the local assignment
+    const list = Store.getAssignments();
+    const local = list.find(x => x.id === ctx.localId);
+    if (local) {
+      local.status = 'graded'; local.completed = true; local.missing = false;
+      local.score = score;
+      local.grade = Math.round((score / (ctx.quiz.points_possible || 1)) * 100) + '%';
+      Store.saveAssignments(list);
+      Todo.render(); App.refreshDashboard();
+    }
+    App.showToast('Demo quiz graded!', 'success');
+    renderQuizResult({ kept_score: score }, hasEssay);
+  }
+
+  function renderQuizResult(completed, hasEssay) {
     const q = ctx.quiz;
     const score = completed && completed.kept_score != null ? completed.kept_score
                 : completed && completed.score != null ? completed.score : null;
     const total = q.points_possible;
+    const canvasLink = ctx.demo ? ''
+      : `<a class="btn-secondary" href="${escHtml(quizUrl(ctx.courseCanvasId, q.id))}" target="_blank" rel="noopener">View in Canvas</a>`;
+    const note = ctx.demo
+      ? `Auto-graded${hasEssay ? ' — the essay question would be graded by your teacher.' : '.'}`
+      : 'Auto-graded score. Questions graded by hand (like essays) may change this later.';
+
     setBody(`
       <div class="quiz-result">
         <div class="quiz-result-icon">
@@ -515,10 +584,10 @@ const Work = (() => {
         <h3>Quiz submitted!</h3>
         ${score != null
           ? `<div class="quiz-result-score">${score}${total != null ? ' / ' + total : ''}</div>
-             <p class="quiz-result-note">Auto-graded score. Questions graded by hand (like essays) may change this later.</p>`
+             <p class="quiz-result-note">${note}</p>`
           : `<p class="quiz-result-note">Your answers were sent to Canvas. Your teacher will grade them.</p>`}
         <div class="work-actions">
-          <a class="btn-secondary" href="${escHtml(quizUrl(ctx.courseCanvasId, q.id))}" target="_blank" rel="noopener">View in Canvas</a>
+          ${canvasLink}
           <button class="btn-primary" onclick="Work.close()">Done</button>
         </div>
       </div>`);
