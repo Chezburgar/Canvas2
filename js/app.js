@@ -13,7 +13,7 @@ const App = (() => {
     const user = Store.getUser();
 
     if (cfg && user) {
-      CanvasAPI.init(cfg.domain, cfg.token);
+      CanvasAPI.init(cfg.domain, cfg.token, cfg.proxyUrl);
       signInUser(user, false);
     } else {
       showLogin();
@@ -24,18 +24,34 @@ const App = (() => {
     document.getElementById('view-login').style.display = 'flex';
     document.getElementById('app-shell').classList.add('hidden');
     document.getElementById('sync-screen').classList.add('hidden');
+
+    // Prefill domain + proxy (never the token) for convenience
+    const prefs = Store.getLoginPrefs();
+    if (prefs) {
+      if (prefs.domain)   document.getElementById('login-domain').value = prefs.domain;
+      if (prefs.proxyUrl) document.getElementById('login-proxy').value  = prefs.proxyUrl;
+    }
   }
 
   /* ── Canvas Connect ───────────────────────── */
   async function connectCanvas() {
-    const domain = document.getElementById('login-domain').value.trim();
-    const token  = document.getElementById('login-token').value.trim();
-    const errEl  = document.getElementById('login-error');
-    const label  = document.getElementById('connect-label');
-    const spinner = document.getElementById('connect-spinner');
+    const domain   = document.getElementById('login-domain').value.trim();
+    const token    = document.getElementById('login-token').value.trim();
+    const proxyUrl = document.getElementById('login-proxy').value.trim();
+    const errEl    = document.getElementById('login-error');
+    const label    = document.getElementById('connect-label');
+    const spinner  = document.getElementById('connect-spinner');
 
-    if (!domain) { showLoginError('Please enter your Canvas domain.'); return; }
-    if (!token)  { showLoginError('Please paste your Canvas access token.'); return; }
+    if (!domain)   { showLoginError('Please enter your Canvas domain.'); return; }
+    if (!token)    { showLoginError('Please paste your Canvas access token.'); return; }
+    if (!proxyUrl) {
+      showLoginError('Please enter your Proxy URL. Canvas can’t be reached without it — see the setup note above.');
+      return;
+    }
+    if (!/^https:\/\/.+/.test(proxyUrl)) {
+      showLoginError('Proxy URL must start with https:// (your Cloudflare Worker URL).');
+      return;
+    }
 
     errEl.classList.add('hidden');
     label.textContent = 'Connecting…';
@@ -43,7 +59,7 @@ const App = (() => {
     document.getElementById('btn-connect').disabled = true;
 
     try {
-      CanvasAPI.init(domain, token);
+      CanvasAPI.init(domain, token, proxyUrl);
       const user = await CanvasAPI.getUser();
 
       const userData = {
@@ -53,7 +69,8 @@ const App = (() => {
         isDemo:  false,
       };
       Store.saveUser(userData);
-      Store.saveCanvasCfg({ domain, token });
+      Store.saveCanvasCfg({ domain, token, proxyUrl });
+      Store.saveLoginPrefs({ domain, proxyUrl });
       Store.setDemo(false);
 
       // Show sync screen
@@ -62,11 +79,14 @@ const App = (() => {
 
       signInUser(userData, true);
     } catch (err) {
-      const msg = err.message === 'INVALID_TOKEN'
-        ? 'Invalid token — please check it and try again.'
-        : err.message.includes('Failed to fetch')
-        ? 'Could not reach Canvas. Check your domain and internet connection.'
-        : `Error: ${err.message}`;
+      let msg;
+      if (err.message === 'INVALID_TOKEN') {
+        msg = 'Invalid token — Canvas rejected it. Generate a fresh token and try again.';
+      } else if (err.message === 'NETWORK' || err.message.includes('Failed to fetch')) {
+        msg = 'Could not reach your proxy. Double-check the Proxy URL is correct and the Worker is deployed.';
+      } else {
+        msg = `Error: ${err.message}`;
+      }
       showLoginError(msg);
     } finally {
       label.textContent = 'Connect to Canvas';

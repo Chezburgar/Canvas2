@@ -4,8 +4,9 @@
    ════════════════════════════════════════════════ */
 
 const CanvasAPI = (() => {
-  let _baseUrl = '';
-  let _token   = '';
+  let _baseUrl  = '';
+  let _token    = '';
+  let _proxyUrl = '';
 
   const headers = () => ({
     'Authorization': `Bearer ${_token}`,
@@ -13,13 +14,32 @@ const CanvasAPI = (() => {
     'Content-Type': 'application/json',
   });
 
+  /* ── Route a Canvas URL through the proxy ──────
+     Canvas blocks direct browser requests (no CORS),
+     so all calls go through the user's Cloudflare
+     Worker, which adds CORS headers. If no proxy is
+     configured, fall back to a direct call (works
+     only on Canvas instances that allow CORS).
+  ─────────────────────────────────────────── */
+  function wrap(canvasUrl) {
+    if (!_proxyUrl) return canvasUrl;
+    return `${_proxyUrl}?target=${encodeURIComponent(canvasUrl)}`;
+  }
+
   /* ── Core fetch with pagination ──────────────
      Canvas paginates via Link headers:
      Link: <url>; rel="next", <url>; rel="last"
+     The "next" URL is a raw Canvas URL, so we wrap
+     it through the proxy again on each loop.
   ─────────────────────────────────────────── */
-  async function fetchPage(url) {
-    const resp = await fetch(url, { headers: headers() });
-    if (resp.status === 401) throw new Error('INVALID_TOKEN');
+  async function fetchPage(canvasUrl) {
+    let resp;
+    try {
+      resp = await fetch(wrap(canvasUrl), { headers: headers() });
+    } catch (e) {
+      throw new Error('NETWORK');
+    }
+    if (resp.status === 401 || resp.status === 403) throw new Error('INVALID_TOKEN');
     if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
     const data = await resp.json();
     const link = resp.headers.get('Link') || '';
@@ -59,13 +79,15 @@ const CanvasAPI = (() => {
   }
 
   /* ── Init ────────────────────────────────── */
-  function init(domain, token) {
+  function init(domain, token, proxyUrl) {
     const clean = domain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-    _baseUrl = `https://${clean}/api/v1`;
-    _token   = token.trim();
+    _baseUrl  = `https://${clean}/api/v1`;
+    _token    = token.trim();
+    _proxyUrl = (proxyUrl || '').trim().replace(/\/$/, '');
   }
 
   function isConfigured() { return !!_token && !!_baseUrl; }
+  function hasProxy()     { return !!_proxyUrl; }
 
   /* ── User ────────────────────────────────── */
   async function getUser() {
@@ -331,7 +353,7 @@ const CanvasAPI = (() => {
   }
 
   return {
-    init, isConfigured,
+    init, isConfigured, hasProxy,
     getUser, syncAll, syncModules, syncDiscussions,
     getDomain: () => _baseUrl.replace('/api/v1','').replace('https://',''),
   };

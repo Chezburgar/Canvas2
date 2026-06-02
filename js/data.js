@@ -71,6 +71,11 @@ const Store = {
   getCanvasCfg()  { return this.get('canvas-cfg', null); },
   saveCanvasCfg(c){ this.set('canvas-cfg', c); },
 
+  /* Login prefs — domain + proxy only (NEVER the token).
+     Persisted across reconnects so the user doesn't retype them. */
+  getLoginPrefs()    { return this.get('login-prefs', null); },
+  saveLoginPrefs(p)  { this.set('login-prefs', p); },
+
   /* Canvas data */
   getCourses()            { return this.get('courses', DEMO_COURSES); },
   saveCourses(c)          { this.set('courses', c); },
