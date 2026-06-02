@@ -25,11 +25,13 @@ const App = (() => {
     document.getElementById('app-shell').classList.add('hidden');
     document.getElementById('sync-screen').classList.add('hidden');
 
-    // Prefill domain + proxy (never the token) for convenience
+    // Prefill domain + proxy from saved prefs (never the token)
     const prefs = Store.getLoginPrefs();
     if (prefs) {
       if (prefs.domain)   document.getElementById('login-domain').value = prefs.domain;
       if (prefs.proxyUrl) document.getElementById('login-proxy').value  = prefs.proxyUrl;
+      // Fall back to the shared proxy if none was saved
+      else document.getElementById('login-proxy').value = 'https://canvas2-proxy.chasepivor.workers.dev';
     }
   }
 

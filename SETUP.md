@@ -7,7 +7,19 @@ just paste your Canvas token and everything works.
 
 ---
 
-## Part 1 — Deploy the free proxy (one time, ~5 minutes)
+## Part 1 — Proxy URL (already set up for you!)
+
+A shared proxy is pre-filled in the login form:
+
+```
+https://canvas2-proxy.chasepivor.workers.dev
+```
+
+You can use that without doing anything extra. If you'd rather run your own
+private proxy (so your token passes only through infrastructure you own),
+follow these steps — otherwise skip straight to Part 2.
+
+### Set up your own proxy (optional, ~5 minutes)
 
 You only do this once. It's free and needs no credit card.
 

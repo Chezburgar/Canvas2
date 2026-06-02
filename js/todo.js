@@ -205,7 +205,7 @@ const Todo = (() => {
     document.getElementById('f-course').value  = a.courseId;
     document.getElementById('f-type').value    = a.type;
     document.getElementById('f-points').value  = a.points || '';
-    document.getElementById('f-due').value     = a.due ? a.due.slice(0,16) : '';
+    document.getElementById('f-due').value     = a.due ? toLocalInput(a.due) : '';
     document.getElementById('f-notes').value   = a.notes || '';
     document.getElementById('form-title').textContent       = 'Edit Assignment';
     document.getElementById('form-submit-btn').textContent  = 'Save Changes';
@@ -214,15 +214,27 @@ const Todo = (() => {
   }
 
   /* ── Form ─────────────────────────────────── */
+
+  // datetime-local inputs need local time, not UTC
+  function toLocalInput(date) {
+    const d   = date instanceof Date ? date : new Date(date);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   function showAddForm() {
     document.getElementById('add-form').classList.remove('hidden');
     document.getElementById('btn-add-task').classList.add('hidden');
     populateCourseSelect();
     if (!editingId) {
+      document.getElementById('f-name').value   = '';
+      document.getElementById('f-points').value = '';
+      document.getElementById('f-notes').value  = '';
+      document.getElementById('f-type').value   = 'homework';
       document.getElementById('form-title').textContent      = 'Add Assignment';
       document.getElementById('form-submit-btn').textContent = 'Add Assignment';
       const d = new Date(); d.setDate(d.getDate()+1); d.setHours(23,59,0);
-      document.getElementById('f-due').value = d.toISOString().slice(0,16);
+      document.getElementById('f-due').value = toLocalInput(d);
     }
   }
 
@@ -269,6 +281,12 @@ const Todo = (() => {
 
     Store.saveAssignments(assignments);
     hideAddForm();
+    // Switch to all so the newly-added item is always visible regardless of filter
+    if (!editingId) {
+      currentFilter = 'all';
+      document.querySelectorAll('.filter-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.filter === 'all'));
+    }
     render();
     App.refreshDashboard();
     editingId = null;

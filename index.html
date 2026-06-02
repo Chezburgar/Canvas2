@@ -66,7 +66,7 @@
         </div>
         <div class="login-field">
           <label>Proxy URL <span class="field-required-note">required for MCPS</span></label>
-          <input type="text" id="login-proxy" placeholder="https://canvas2-proxy.your-name.workers.dev" autocomplete="off" spellcheck="false">
+          <input type="text" id="login-proxy" value="https://canvas2-proxy.chasepivor.workers.dev" placeholder="https://canvas2-proxy.your-name.workers.dev" autocomplete="off" spellcheck="false">
           <details class="proxy-help">
             <summary>Why do I need this, and how do I set it up?</summary>
             <p>Canvas blocks websites from reading your data directly in the browser. A free Cloudflare Worker relays the requests so it works. You set it up <strong>once</strong> in about 5 minutes — see <strong>SETUP.md</strong> in the project, or follow the steps inside <strong>cloudflare-worker.js</strong>. Your token passes only through your own Worker.</p>
