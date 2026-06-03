@@ -151,6 +151,27 @@ const Store = {
   getLoginPrefs()    { return this.get('login-prefs', null); },
   saveLoginPrefs(p)  { this.set('login-prefs', p); },
 
+  /* User preferences — appearance + behaviour. Persist across reconnects. */
+  getPrefs() {
+    return Object.assign({
+      textSize:      'medium',       // small | medium | large
+      density:       'comfortable',  // comfortable | compact
+      autoSync:      '10',           // minutes between background syncs, or 'off'
+      defaultView:   'dashboard',    // view to open after sign-in
+      hideSubmitted: true,           // hide submitted/late/pending items from To-Do
+    }, this.get('prefs', {}));
+  },
+  savePrefs(p) { this.set('prefs', Object.assign(this.getPrefs(), p)); },
+
+  /* Deletion tombstones — Canvas assignment ids the user removed.
+     A background re-sync must NOT bring these back. */
+  getDeleted()    { return this.get('deleted', []); },
+  addDeleted(id)  {
+    if (id === null || id === undefined) return;
+    const d = this.getDeleted();
+    if (!d.includes(id)) { d.push(id); this.set('deleted', d); }
+  },
+
   /* Canvas data */
   getCourses()            { return this.get('courses', DEMO_COURSES); },
   saveCourses(c)          { this.set('courses', c); },
@@ -183,8 +204,10 @@ const Store = {
   setDemo(v){ this.set('is-demo', v); },
 
   clear() {
+    // Note: 'prefs' and 'theme' are intentionally preserved so the user's
+    // appearance choices survive a reconnect / data reset.
     const keys = ['user','canvas-cfg','courses','assignments','announcements',
-                  'notes','last-sync','is-demo'];
+                  'notes','last-sync','is-demo','deleted'];
     keys.forEach(k => localStorage.removeItem(this._k(k)));
     // clear module/discussion caches
     Object.keys(localStorage)

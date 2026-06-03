@@ -48,16 +48,27 @@ const Todo = (() => {
     return '#34a853';
   }
 
+  /* An item is "done" once it has been submitted in any form —
+     submitted, late, pending review, or graded. These are hidden from
+     the active to-do views (they live under the Submitted / Graded tabs). */
+  const DONE_STATUSES = ['submitted', 'late', 'pending_review', 'graded'];
+  function isDone(a) { return DONE_STATUSES.includes(a.status) || a.completed; }
+
   /* ── Filter ───────────────────────────────── */
   function filterAssignments(all, filter) {
     switch (filter) {
-      case 'today':     return all.filter(a => a.status !== 'graded' && DateUtils.isToday(a.due));
-      case 'week':      return all.filter(a => a.status !== 'graded' && DateUtils.isThisWeek(a.due) && !DateUtils.isOverdue(a.due));
-      case 'overdue':   return all.filter(a => a.status !== 'graded' && !a.missing && DateUtils.isOverdue(a.due));
-      case 'missing':   return all.filter(a => a.missing || a.status === 'missing');
-      case 'submitted': return all.filter(a => a.status === 'submitted' || a.status === 'late');
+      case 'today':     return all.filter(a => !isDone(a) && DateUtils.isToday(a.due));
+      case 'week':      return all.filter(a => !isDone(a) && DateUtils.isThisWeek(a.due) && !DateUtils.isOverdue(a.due));
+      case 'overdue':   return all.filter(a => !isDone(a) && !a.missing && DateUtils.isOverdue(a.due));
+      case 'missing':   return all.filter(a => (a.missing || a.status === 'missing') && !isDone(a));
+      case 'submitted': return all.filter(a => a.status === 'submitted' || a.status === 'late' || a.status === 'pending_review');
       case 'graded':    return all.filter(a => a.status === 'graded');
-      default:          return all.filter(a => a.status !== 'graded' && !a.missing);
+      // Default ("All"): active to-do. Submitted/late/pending are hidden unless
+      // the user turns the preference off; graded is always hidden here.
+      default:
+        return Store.getPrefs().hideSubmitted
+          ? all.filter(a => !isDone(a) && !a.missing)
+          : all.filter(a => a.status !== 'graded' && !a.missing);
     }
   }
 
@@ -191,7 +202,11 @@ const Todo = (() => {
   /* ── Delete ───────────────────────────────── */
   function delete_(id) {
     if (!confirm('Remove this assignment from Canvas2?')) return;
-    Store.saveAssignments(Store.getAssignments().filter(x => x.id !== id));
+    const list = Store.getAssignments();
+    const a = list.find(x => x.id === id);
+    // Tombstone Canvas-sourced items so a background re-sync won't re-add them.
+    if (a && a.canvasId) Store.addDeleted(a.canvasId);
+    Store.saveAssignments(list.filter(x => x.id !== id));
     render();
     App.refreshDashboard();
     App.showToast('Assignment removed.', 'warning');
@@ -255,43 +270,53 @@ const Todo = (() => {
   }
 
   function submitForm() {
-    const name     = document.getElementById('f-name').value.trim();
-    const courseId = document.getElementById('f-course').value;
-    const type     = document.getElementById('f-type').value;
-    const points   = parseInt(document.getElementById('f-points').value) || 0;
-    const due      = document.getElementById('f-due').value;
-    const notes    = document.getElementById('f-notes').value.trim();
+    try {
+      const name     = (document.getElementById('f-name').value || '').trim();
+      const courseId = document.getElementById('f-course').value || '';
+      const type     = document.getElementById('f-type').value || 'homework';
+      const points   = parseInt(document.getElementById('f-points').value, 10) || 0;
+      const dueRaw   = document.getElementById('f-due').value || '';
+      const notes    = (document.getElementById('f-notes').value || '').trim();
 
-    if (!name) { App.showToast('Please enter a name.', 'error'); return; }
-    if (!due)  { App.showToast('Please set a due date.', 'error'); return; }
+      if (!name)    { App.showToast('Please enter a name.', 'error'); return; }
+      if (!dueRaw)  { App.showToast('Please set a due date.', 'error'); return; }
 
-    const assignments = Store.getAssignments();
-    if (editingId) {
-      const a = assignments.find(x => x.id === editingId);
-      if (a) { a.name = name; a.courseId = courseId; a.type = type; a.points = points; a.due = new Date(due).toISOString(); a.notes = notes; }
-      App.showToast('Assignment updated!', 'success');
-    } else {
-      assignments.push({
-        id: 'u' + Date.now(), canvasId: null, courseId, name, type, points,
-        due: new Date(due).toISOString(), notes,
-        completed: false, status: 'not_submitted',
-        score: null, grade: null, late: false, missing: false,
-        canvasUrl: '#',
-      });
-      App.showToast(`"${name}" added!`, 'success');
+      const dueDate = new Date(dueRaw);
+      if (isNaN(dueDate.getTime())) { App.showToast('That due date looks invalid.', 'error'); return; }
+      const due = dueDate.toISOString();
+
+      const assignments = Store.getAssignments();
+      const wasEditing  = !!editingId;
+
+      if (wasEditing) {
+        const a = assignments.find(x => x.id === editingId);
+        if (a) { a.name = name; a.courseId = courseId; a.type = type; a.points = points; a.due = due; a.notes = notes; }
+        App.showToast('Assignment updated!', 'success');
+      } else {
+        assignments.push({
+          id: 'u' + Date.now(), canvasId: null, courseId, name, type, points,
+          due, notes,
+          completed: false, status: 'not_submitted',
+          score: null, grade: null, late: false, missing: false,
+          canvasUrl: '#',
+        });
+        App.showToast(`"${name}" added!`, 'success');
+      }
+
+      Store.saveAssignments(assignments);
+      editingId = null;
+      hideAddForm();
+      // Switch to "All" so the newly-added item is always visible regardless of filter.
+      if (!wasEditing) {
+        currentFilter = 'all';
+        document.querySelectorAll('.filter-btn').forEach(b =>
+          b.classList.toggle('active', b.dataset.filter === 'all'));
+      }
+      render();
+      App.refreshDashboard();
+    } catch (err) {
+      App.showToast('Could not save: ' + err.message, 'error');
     }
-
-    Store.saveAssignments(assignments);
-    hideAddForm();
-    // Switch to all so the newly-added item is always visible regardless of filter
-    if (!editingId) {
-      currentFilter = 'all';
-      document.querySelectorAll('.filter-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.filter === 'all'));
-    }
-    render();
-    App.refreshDashboard();
-    editingId = null;
   }
 
   /* ── Filter tabs ──────────────────────────── */

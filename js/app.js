@@ -9,6 +9,7 @@ const App = (() => {
 
   /* ── Boot ─────────────────────────────────── */
   function init() {
+    applyPrefs();
     const cfg  = Store.getCanvasCfg();
     const user = Store.getUser();
 
@@ -114,6 +115,21 @@ const App = (() => {
     el.classList.remove('hidden');
   }
 
+  /* ── Sync merge ───────────────────────────────
+     Combine freshly-fetched Canvas assignments with what's stored so
+     that user intent is respected across syncs:
+       • assignments the user DELETED (tombstoned) are never re-added
+       • assignments the user CREATED in Canvas2 (no canvasId) are kept
+       • everything else mirrors Canvas (its source of truth)
+  ─────────────────────────────────────────── */
+  function mergeAssignments(incoming) {
+    const deleted  = Store.getDeleted();                    // [canvasId, …]
+    const existing = Store.getAssignments();
+    const custom   = existing.filter(a => !a.canvasId);     // user-made entries
+    const fresh    = (incoming || []).filter(a => !deleted.includes(a.canvasId));
+    return [...fresh, ...custom];
+  }
+
   /* ── Sync ─────────────────────────────────── */
   async function runSync() {
     if (syncing) return;
@@ -133,7 +149,7 @@ const App = (() => {
       });
 
       Store.saveCourses(courses);
-      Store.saveAssignments(assignments);
+      Store.saveAssignments(mergeAssignments(assignments));
       Store.saveAnnouncements(announcements);
       Store.saveLastSync();
 
@@ -173,6 +189,44 @@ const App = (() => {
     } finally {
       if (icon) icon.style.animation = '';
     }
+  }
+
+  /* ── Background auto-sync ─────────────────────
+     Silently refreshes Canvas data on an interval (no loading screen).
+     Honors the user's "Auto-sync" preference and skips demo mode. */
+  let autoSyncTimer = null;
+
+  async function backgroundSync() {
+    if (Store.isDemo() || !CanvasAPI.isConfigured() || syncing) return;
+    syncing = true;
+    try {
+      const { user, courses, assignments, announcements } = await CanvasAPI.syncAll();
+      Store.saveCourses(courses);
+      Store.saveAssignments(mergeAssignments(assignments));
+      Store.saveAnnouncements(announcements);
+      Store.saveLastSync();
+      const saved = Store.getUser();
+      if (saved && user) {
+        saved.name = saved.name || user.name;
+        saved.email = saved.email || user.email;
+        saved.picture = saved.picture || user.avatar_url;
+        Store.saveUser(saved);
+      }
+    } catch { /* stay quiet — this is a background refresh */ }
+    finally {
+      syncing = false;
+      refreshAll();
+      updateSyncTime();
+    }
+  }
+
+  function startAutoSync() {
+    if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
+    if (Store.isDemo()) return;
+    const mins = Store.getPrefs().autoSync;
+    if (mins === 'off') return;
+    const ms = Math.max(1, parseInt(mins, 10) || 10) * 60000;
+    autoSyncTimer = setInterval(backgroundSync, ms);
   }
 
   function reconnect() {
@@ -217,16 +271,20 @@ const App = (() => {
     const cfg = Store.getCanvasCfg();
     if (cfg) setEl('settings-canvas-domain', `Canvas: ${cfg.domain}`);
 
+    applyPrefs();
     wireNav();
     Todo.init();
     Agenda.init();
     renderDashboard();
     renderCourses();
     renderThemePicker();
+    renderPreferences();
     populateCourseSelects();
     updateSyncTime();
+    startAutoSync();
 
-    navigate('dashboard');
+    const start = Store.getPrefs().defaultView;
+    navigate(['dashboard','todo','agenda','courses'].includes(start) ? start : 'dashboard');
   }
 
   function signOut() {
@@ -259,7 +317,7 @@ const App = (() => {
     if (viewName === 'todo')        Todo.render();
     if (viewName === 'agenda')      Agenda.init();
     if (viewName === 'courses')     renderCourses();
-    if (viewName === 'settings')    { renderThemePicker(); updateSyncTimeSettings(); }
+    if (viewName === 'settings')    { renderThemePicker(); renderPreferences(); updateSyncTimeSettings(); }
   }
 
   /* ── Dashboard ────────────────────────────── */
@@ -768,6 +826,59 @@ const App = (() => {
       : 'Last synced: never';
   }
 
+  /* ── Preferences ──────────────────────────────
+     Appearance + behaviour settings, persisted in Store.getPrefs(). */
+  function applyPrefs() {
+    const p = Store.getPrefs();
+    const sizes = { small: '15px', medium: '16px', large: '18px' };
+    document.documentElement.style.fontSize = sizes[p.textSize] || '16px';
+    document.body.setAttribute('data-density', p.density || 'comfortable');
+  }
+
+  const PREF_OPTIONS = {
+    textSize:    { label:'Text size',        type:'choice', choices:[['small','Small'],['medium','Medium'],['large','Large']] },
+    density:     { label:'Layout density',   type:'choice', choices:[['comfortable','Comfortable'],['compact','Compact']] },
+    autoSync:    { label:'Auto-sync',        type:'choice', choices:[['off','Off'],['5','Every 5 min'],['10','Every 10 min'],['30','Every 30 min']] },
+    defaultView: { label:'Open on sign-in',  type:'choice', choices:[['dashboard','Dashboard'],['todo','To-Do'],['agenda','Agenda'],['courses','Courses']] },
+    hideSubmitted:{ label:'Hide submitted in To-Do', type:'toggle' },
+  };
+
+  function renderPreferences() {
+    const panel = document.getElementById('prefs-panel');
+    if (!panel) return;
+    const p = Store.getPrefs();
+    panel.innerHTML = Object.entries(PREF_OPTIONS).map(([key, cfg]) => {
+      if (cfg.type === 'toggle') {
+        return `
+          <div class="pref-row">
+            <span class="pref-label">${cfg.label}</span>
+            <label class="pref-switch">
+              <input type="checkbox" ${p[key] ? 'checked' : ''} onchange="App.setPref('${key}', this.checked)">
+              <span class="pref-slider"></span>
+            </label>
+          </div>`;
+      }
+      const opts = cfg.choices.map(([val, lbl]) =>
+        `<button type="button" class="pref-chip ${String(p[key]) === val ? 'active' : ''}" onclick="App.setPref('${key}','${val}')">${lbl}</button>`
+      ).join('');
+      return `
+        <div class="pref-row pref-row-choice">
+          <span class="pref-label">${cfg.label}</span>
+          <div class="pref-chips">${opts}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function setPref(key, value) {
+    Store.savePrefs({ [key]: value });
+    applyPrefs();
+    renderPreferences();
+    if (key === 'autoSync')      startAutoSync();
+    if (key === 'hideSubmitted') Todo.render();
+    if (key === 'textSize' || key === 'density') {} // applied above
+    showToast('Preference saved.', 'success');
+  }
+
   /* ── Data actions ─────────────────────────── */
   function exportData_() { exportData(); showToast('Data exported!', 'success'); }
 
@@ -812,6 +923,7 @@ const App = (() => {
     openSidebar, closeSidebar,
     onSearch, exportData: exportData_, clearData,
     showToast, onDisclaimerChange,
+    setPref, syncBackground: backgroundSync,
   };
 })();
 

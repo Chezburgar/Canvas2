@@ -28,16 +28,26 @@ const Work = (() => {
     return tpl.innerHTML;
   }
 
-  /* ── Modal plumbing ───────────────────────── */
+  /* ── Page plumbing ────────────────────────────
+     The work area is a full content-view (not a popup). We remember
+     which view the user came from so the Back button returns there. */
+  let returnView = 'todo';
+
   function open(title) {
+    // Only capture the origin the first time we open (re-renders re-call open()).
+    const active = document.querySelector('.content-view.active');
+    const activeView = active ? active.id.replace('view-', '') : 'todo';
+    if (activeView !== 'work') returnView = activeView;
+
     document.getElementById('work-title').textContent = title || 'Loading…';
     document.getElementById('work-body').innerHTML =
       '<div class="work-loading"><div class="loading-spinner"></div> Loading…</div>';
-    document.getElementById('work-overlay').classList.remove('hidden');
+    document.getElementById('view-work').scrollTop = 0;
+    App.navigate('work');
   }
   function close() {
-    document.getElementById('work-overlay').classList.add('hidden');
     ctx = null;
+    App.navigate(returnView || 'todo');
   }
   function setBody(html) { document.getElementById('work-body').innerHTML = html; }
   function setTitle(t)   { document.getElementById('work-title').textContent = t; }
@@ -91,10 +101,24 @@ const Work = (() => {
   }
 
   const SUPPORTED_TYPES = {
-    online_text_entry: 'Text',
+    online_text_entry: 'Text entry',
     online_url:        'Website URL',
     online_upload:     'File upload',
   };
+
+  const TYPE_LABELS = {
+    online_text_entry: 'Text entry',
+    online_url:        'Website URL',
+    online_upload:     'File upload',
+    online_quiz:       'Quiz',
+    discussion_topic:  'Discussion',
+    media_recording:   'Media recording',
+    student_annotation:'Annotation',
+    on_paper:          'On paper',
+    external_tool:     'External tool',
+    none:              'No submission',
+  };
+  function prettyType(t) { return TYPE_LABELS[t] || t.replace(/_/g, ' '); }
 
   function renderAssignment() {
     const a   = ctx.assignment;
@@ -114,24 +138,30 @@ const Work = (() => {
           ? `<span class="status-badge status-missing">Missing</span>`
           : `<span class="status-badge status-pending">Not submitted</span>`;
 
+    // List every format Canvas allows so the student always sees the full set,
+    // including ones Canvas2 can't submit in-browser (e.g. media recording).
+    const allTypes = (a.submission_types || []);
+    const unsupported = allTypes.filter(t => !SUPPORTED_TYPES[t] && t !== 'none' && t !== 'not_graded');
+
     let submitArea;
     if (supported.length === 0) {
       submitArea = `<div class="work-note">This assignment type can't be submitted from Canvas2
-        ${(a.submission_types || []).includes('on_paper') ? '(on-paper assignment).' : '.'}
+        ${allTypes.includes('on_paper') ? '(on-paper assignment).' : '.'}
         Use the button below to open it in Canvas.</div>`;
     } else {
       const typePicker = supported.length > 1
-        ? `<div class="work-type-picker">${supported.map((t, i) => `
-            <label class="work-type-opt">
-              <input type="radio" name="work-subtype" value="${t}" ${i === 0 ? 'checked' : ''} onchange="Work.switchType('${t}')">
-              <span>${SUPPORTED_TYPES[t]}</span>
-            </label>`).join('')}</div>`
-        : '';
+        ? `<div class="work-format-note">This assignment accepts <strong>${supported.length} submission formats</strong> — choose one:</div>
+           <div class="work-type-tabs" id="work-type-tabs">${supported.map((t, i) => `
+             <button type="button" class="work-type-tab ${i === 0 ? 'active' : ''}" data-type="${t}" onclick="Work.switchType('${t}')">
+               ${SUPPORTED_TYPES[t]}
+             </button>`).join('')}</div>`
+        : `<div class="work-format-note">Submit as <strong>${SUPPORTED_TYPES[supported[0]]}</strong>.</div>`;
 
       submitArea = `
         ${alreadySubmitted ? `<div class="work-note work-note-info">You've already submitted. Submitting again will replace your previous work.</div>` : ''}
         ${typePicker}
         ${supported.map((t, i) => renderSubmitControl(t, i === 0, a)).join('')}
+        ${unsupported.length ? `<div class="work-hint">Other formats this assignment allows (use Canvas for these): ${unsupported.map(t => prettyType(t)).join(', ')}.</div>` : ''}
         <div class="work-actions">
           <button class="btn-primary" id="work-submit-btn" onclick="Work.submitAssignment()">Submit to Canvas</button>
           <a class="btn-secondary" href="${escHtml(a.html_url || '#')}" target="_blank" rel="noopener">Open in Canvas</a>
@@ -185,11 +215,14 @@ const Work = (() => {
     document.querySelectorAll('#work-body .work-control').forEach(el => {
       el.classList.toggle('hidden', el.dataset.type !== type);
     });
+    document.querySelectorAll('#work-body .work-type-tab').forEach(el => {
+      el.classList.toggle('active', el.dataset.type === type);
+    });
   }
 
   function selectedType() {
-    const picked = document.querySelector('input[name="work-subtype"]:checked');
-    if (picked) return picked.value;
+    const activeTab = document.querySelector('#work-body .work-type-tab.active');
+    if (activeTab) return activeTab.dataset.type;
     const single = document.querySelector('#work-body .work-control');
     return single ? single.dataset.type : null;
   }
