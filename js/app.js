@@ -371,10 +371,8 @@ const App = (() => {
   }
 
   function renderUpcoming() {
-    const all = Store.getAssignments()
-      .filter(a => a.status !== 'graded' && !a.missing)
-      .sort((a, b) => new Date(a.due) - new Date(b.due))
-      .slice(0, 7);
+    // Same filtering + priority order as the To-Do list, so they match.
+    const all = Todo.getActiveSorted().slice(0, 7);
     const courses  = Store.getCourses();
     const cMap     = Object.fromEntries(courses.map(c => [c.id, c]));
     const el       = document.getElementById('dash-upcoming');
@@ -389,7 +387,7 @@ const App = (() => {
       const c      = cMap[a.courseId] || { color:'#607d8b', name:'' };
       const days   = DateUtils.daysUntil(a.due);
       const dueCls = days < 0 ? 'due-today' : days === 0 ? 'due-today' : days <= 3 ? 'due-soon' : 'due-later';
-      const statusBadge = statusBadgeHtml(a);
+      const pri    = Todo.priorityLabel(Todo.priorityScore(a));
       return `
         <div class="upcoming-item" onclick="App.navigate('todo')">
           <div class="upcoming-dot" style="background:${c.color}"></div>
@@ -397,7 +395,7 @@ const App = (() => {
             <div class="upcoming-name">${escHtml(a.name)}</div>
             <div class="upcoming-meta">${escHtml(c.name)}${a.points ? ` · ${a.points}pt` : ''}</div>
           </div>
-          ${statusBadge}
+          <span class="todo-priority-badge ${pri.cls}">${pri.label}</span>
           <span class="upcoming-due ${dueCls}">${DateUtils.formatDate(a.due)}</span>
         </div>`;
     }).join('');

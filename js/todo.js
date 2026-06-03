@@ -72,6 +72,17 @@ const Todo = (() => {
     }
   }
 
+  /* Active to-do items, filtered + priority-sorted exactly like the
+     default ("All") view. Shared with the dashboard's Upcoming list. */
+  function getActiveSorted() {
+    const list = filterAssignments(Store.getAssignments(), 'all');
+    list.sort((a, b) => {
+      const sa = priorityScore(a), sb = priorityScore(b);
+      return Math.abs(sa - sb) > 0.01 ? sb - sa : new Date(a.due) - new Date(b.due);
+    });
+    return list;
+  }
+
   /* ── Render ───────────────────────────────── */
   function render() {
     const all       = Store.getAssignments();
@@ -335,6 +346,7 @@ const Todo = (() => {
     init() { initFilters(); render(); },
     render, toggle, edit, submitForm,
     showAddForm, hideAddForm, updateBadge,
+    getActiveSorted, priorityScore, priorityLabel,
     delete: delete_,
   };
 })();
