@@ -145,9 +145,14 @@ const Work = (() => {
 
     let submitArea;
     if (supported.length === 0) {
-      submitArea = `<div class="work-note">This assignment type can't be submitted from Canvas2
-        ${allTypes.includes('on_paper') ? '(on-paper assignment).' : '.'}
-        Use the button below to open it in Canvas.</div>`;
+      const reason = allTypes.includes('on_paper') ? 'This is an on-paper assignment.'
+                   : allTypes.length === 0         ? 'No submission type is set.'
+                   : `Submission type${allTypes.length > 1 ? 's' : ''} (${allTypes.map(prettyType).join(', ')}) can't be submitted from Canvas2.`;
+      submitArea = `
+        <div class="work-note">${reason} Open it in Canvas to submit.</div>
+        <div class="work-actions">
+          <a class="btn-primary" href="${escHtml(a.html_url || '#')}" target="_blank" rel="noopener">Open in Canvas</a>
+        </div>`;
     } else {
       const typePicker = supported.length > 1
         ? `<div class="work-format-note">This assignment accepts <strong>${supported.length} submission formats</strong> — choose one:</div>
