@@ -188,6 +188,40 @@ svg { flex-shrink: 0; }
   text-align: center;
 }
 
+.login-disclaimer {
+  background: #fff8e1;
+  border: 1.5px solid #f59e0b;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.disclaimer-header {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.82rem; font-weight: 700;
+  color: #92400e;
+  margin-bottom: 10px;
+}
+.disclaimer-header svg { color: #f59e0b; flex-shrink: 0; }
+.disclaimer-body {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #78350f;
+  margin-bottom: 12px;
+}
+.disclaimer-agree {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-size: 0.82rem; font-weight: 600;
+  color: #92400e;
+  cursor: pointer;
+}
+.disclaimer-agree input[type="checkbox"] {
+  margin-top: 2px; flex-shrink: 0;
+  width: 15px; height: 15px; cursor: pointer;
+  accent-color: #f59e0b;
+}
+.btn-demo:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-connect:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* ════════════════════════════════════════════════
    APP SHELL — LAYOUT
    ════════════════════════════════════════════════ */

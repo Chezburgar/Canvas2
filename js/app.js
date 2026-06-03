@@ -25,6 +25,12 @@ const App = (() => {
     document.getElementById('app-shell').classList.add('hidden');
     document.getElementById('sync-screen').classList.add('hidden');
 
+    // Reset disclaimer — must re-agree each visit
+    const chk = document.getElementById('disclaimer-check');
+    if (chk) chk.checked = false;
+    document.getElementById('btn-connect').disabled = true;
+    document.getElementById('btn-demo').disabled    = true;
+
     // Prefill domain + proxy from saved prefs (never the token)
     const prefs = Store.getLoginPrefs();
     if (prefs) {
@@ -95,6 +101,11 @@ const App = (() => {
       spinner.classList.add('hidden');
       document.getElementById('btn-connect').disabled = false;
     }
+  }
+
+  function onDisclaimerChange(checked) {
+    document.getElementById('btn-connect').disabled = !checked;
+    document.getElementById('btn-demo').disabled    = !checked;
   }
 
   function showLoginError(msg) {
@@ -800,7 +811,7 @@ const App = (() => {
     loadModules, loadDiscussions,
     openSidebar, closeSidebar,
     onSearch, exportData: exportData_, clearData,
-    showToast,
+    showToast, onDisclaimerChange,
   };
 })();
 

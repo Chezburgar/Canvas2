@@ -64,23 +64,33 @@
             </button>
           </div>
         </div>
-        <div class="login-field">
-          <label>Proxy URL <span class="field-required-note">required for MCPS</span></label>
+        <div class="login-field" style="display:none">
+          <label>Proxy URL</label>
           <input type="text" id="login-proxy" value="https://canvas2-proxy.chasepivor.workers.dev" placeholder="https://canvas2-proxy.your-name.workers.dev" autocomplete="off" spellcheck="false">
-          <details class="proxy-help">
-            <summary>Why do I need this, and how do I set it up?</summary>
-            <p>Canvas blocks websites from reading your data directly in the browser. A free Cloudflare Worker relays the requests so it works. You set it up <strong>once</strong> in about 5 minutes — see <strong>SETUP.md</strong> in the project, or follow the steps inside <strong>cloudflare-worker.js</strong>. Your token passes only through your own Worker.</p>
-          </details>
         </div>
+
+        <!-- Required disclaimer -->
+        <div class="login-disclaimer">
+          <div class="disclaimer-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Important Notice
+          </div>
+          <p class="disclaimer-body">Canvas2 is an experimental project created by an external developer. This project is unofficial and has a long way to go before it is anything close to perfect. The goal with this project is to greatly improve the user experience and while we have achieved that we are still <strong>unofficial</strong>. Even if it works we strongly don't recommend completing assignments/quizzes on Canvas2 as your organization may disapprove of it being <strong>unofficial</strong>.</p>
+          <label class="disclaimer-agree">
+            <input type="checkbox" id="disclaimer-check" onchange="App.onDisclaimerChange(this.checked)">
+            <span>I have read and understand the above</span>
+          </label>
+        </div>
+
         <div id="login-error" class="login-error hidden"></div>
-        <button class="btn-connect" id="btn-connect" onclick="App.connectCanvas()">
+        <button class="btn-connect" id="btn-connect" onclick="App.connectCanvas()" disabled>
           <span id="connect-label">Connect to Canvas</span>
           <div class="connect-spinner hidden" id="connect-spinner"></div>
         </button>
       </div>
 
       <div class="login-or"><span>or</span></div>
-      <button class="btn-demo" onclick="App.signInDemo()">
+      <button class="btn-demo" id="btn-demo" onclick="App.signInDemo()" disabled>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Try Demo Mode
       </button>
