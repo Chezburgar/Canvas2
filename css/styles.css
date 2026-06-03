@@ -651,7 +651,7 @@ svg { flex-shrink: 0; }
 .add-form {
   padding: 22px;
   margin-bottom: 16px;
-  border: 2px solid var(--primary);
+  border-top: 3px solid var(--primary);
   animation: fadeIn 0.2s ease;
 }
 .add-form h3 { font-size: 1rem; font-weight: 600; color: var(--text-1); margin-bottom: 18px; }
